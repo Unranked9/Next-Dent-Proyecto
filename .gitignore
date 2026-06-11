@@ -1,0 +1,9 @@
+# Backend (IntelliJ / Java)
+.idea/
+target/
+*.class
+
+# Frontend (React / Node)
+node_modules/
+dist/
+.env

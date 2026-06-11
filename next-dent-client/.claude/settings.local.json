@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx *)",
+      "Bash(Get-ChildItem -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\" -Recurse -Directory)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\\\\src\" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object @{Name='Path';Expression={$_.FullName}} | Format-Table -AutoSize)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\" -Recurse -Directory | Select-Object -First 50 | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\", \".\"\\) })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\\\\src\" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -Property Name, @{N='RelativePath';E={$_.FullName.Replace\\(\"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\\\\src\\\\\", \"\"\\)}} | Sort-Object RelativePath)",
+      "Bash(xargs grep -l \"odontograma\\\\|diente\" -i)"
+    ]
+  }
+}

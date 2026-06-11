@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8080/api/pacientes\" -UseBasicParsing -TimeoutSec 3; \"UP: $\\($r.StatusCode\\)\" } catch { \"DOWN: $_\" })",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:8080/api/pacientes\" -UseBasicParsing; $r.StatusCode; $r.Content)",
+      "Bash(Get-ChildItem *)",
+      "Bash(Select-Object -First 200 FullName)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-List)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\\\\src\" | Where-Object { $_.Extension -in \".ts\",\".tsx\" } | ForEach-Object { $_.FullName })",
+      "Bash(find \"C:\\\\\\\\Users\\\\\\\\ALEXIS\\\\\\\\Documents\\\\\\\\Next-Dent WorkSpace\\\\\\\\next-dent-api\\\\\\\\next-dent-api\\\\\\\\src\\\\\\\\main\\\\\\\\java\" -type d)",
+      "Bash(find C:\\\\\\\\Users\\\\\\\\ALEXIS\\\\\\\\Documents\\\\\\\\Next-Dent WorkSpace\\\\\\\\next-dent-api\\\\\\\\next-dent-api\\\\\\\\src\\\\\\\\main\\\\\\\\resources *)",
+      "Bash(Find \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-api\\\\next-dent-api\" -type f \\\\\\( -name \"*.sql\" -o -name \"*schema*\" -o -name \"*migration*\" \\\\\\))",
+      "Bash(Find C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-api\\\\next-dent-api *)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-api\\\\next-dent-api\\\\src\\\\main\\\\java\\\\com\\\\clinica\\\\next_dent_api\\\\model\\\\PagoPendiente.java\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-api\\\\next-dent-api\\\\src\\\\main\\\\java\\\\com\\\\clinica\\\\next_dent_api\\\\repository\\\\PagoPendienteRepository.java\" -Force)",
+      "Bash(Write-Output \"Eliminados correctamente\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(./mvnw spring-boot:run)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(echo \"Servidor iniciando, PID: $!\")",
+      "Bash(curl *)",
+      "PowerShell(Get-Process *|)",
+      "Bash(Select-Object -ExpandProperty FullName)"
+    ]
+  }
+}
