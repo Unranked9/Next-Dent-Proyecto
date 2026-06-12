@@ -24,6 +24,11 @@ public class PagoService {
     private final PagoDetalleRepository pagoDetalleRepository;
     private final PresupuestoDetalleRepository presupuestoDetalleRepository;
 
+    // ── NUEVO: usado por el KPI "Cobrado hoy" ─────────────────────────────────
+    public List<Pago> obtenerTodos() {
+        return pagoRepository.findAll();
+    }
+
     public List<Pago> obtenerHistorialPaciente(Integer idPaciente) {
         return pagoRepository.findByIdPacienteOrderByFechaPagoDesc(idPaciente);
     }
@@ -71,14 +76,12 @@ public class PagoService {
                         + ") del detalle: " + item.getIdPresupuestoDetalle());
             }
 
-            // Historial: registrar el abono en tb_pago_detalle
             PagoDetalle pagoDetalle = new PagoDetalle();
             pagoDetalle.setPago(pagoGuardado);
             pagoDetalle.setIdPresupuestoDetalle(item.getIdPresupuestoDetalle());
             pagoDetalle.setMontoAplicado(item.getMontoAbonar());
             pagoDetalleRepository.save(pagoDetalle);
 
-            // Descontar el abono del saldo_pendiente
             BigDecimal nuevoSaldo = saldoActual.subtract(item.getMontoAbonar());
             detalle.setSaldoPendiente(nuevoSaldo);
 

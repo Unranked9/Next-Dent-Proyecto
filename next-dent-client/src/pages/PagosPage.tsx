@@ -1,519 +1,656 @@
-import { useEffect, useState } from 'react';
-import { getPagos, registrarAbono } from '../services/pagoService';
-import { getCitas } from '../services/citaService';
-import { getTratamientos } from '../services/tratamientoService';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { getPacientes } from '../services/pacienteService';
+import { getDeudaPaciente, getHistorialPaciente, registrarPago } from '../services/pagoService';
+import { getActivos as getTarifario } from '../services/tarifarioService';
+import { usePorCobrar } from '../hooks/usePorCobrar';
+import type { Paciente } from '../types/paciente';
 import type { Pago } from '../types/pago';
-import type { Cita } from '../types/cita';
-import type { Tratamiento } from '../types/tratamiento';
+import type { DeudaDetalle } from '../services/pagoService';
+import type { Tarifario } from '../types/tarifario';
 
 type MedioPago = 'Efectivo' | 'Yape' | 'Plin' | 'Tarjeta';
 
-interface DeudaRow {
-  idCita: number;
-  paciente: string;
-  tratamiento: string;
-  total: number;
-  pagado: number;
-  saldo: number;
-  montoAbonar: string;
-}
-
-interface ConfirmData {
-  items: { tratamiento: string; paciente: string; abonado: number; pendiente: number }[];
-  totalAbonado: number;
-  medioPago: MedioPago;
-}
-
-const MEDIOS: { value: MedioPago; label: string }[] = [
-  { value: 'Efectivo', label: 'Efectivo' },
-  { value: 'Yape', label: 'Yape' },
-  { value: 'Plin', label: 'Plin' },
-  { value: 'Tarjeta', label: 'Tarjeta' },
+const MEDIOS: { value: MedioPago; label: string; color: string }[] = [
+  { value: 'Efectivo', label: 'Efectivo', color: 'border-emerald-400 bg-emerald-50 text-emerald-700' },
+  { value: 'Yape',     label: 'Yape',     color: 'border-violet-400 bg-violet-50 text-violet-700'   },
+  { value: 'Plin',     label: 'Plin',     color: 'border-sky-400 bg-sky-50 text-sky-700'            },
+  { value: 'Tarjeta',  label: 'Tarjeta',  color: 'border-amber-400 bg-amber-50 text-amber-700'      },
 ];
 
-const MEDIO_STYLE: Record<MedioPago, string> = {
-  Efectivo: 'border-green-500 bg-green-50 text-green-700',
-  Yape:     'border-purple-500 bg-purple-50 text-purple-700',
-  Plin:     'border-blue-500 bg-blue-50 text-blue-700',
-  Tarjeta:  'border-orange-500 bg-orange-50 text-orange-700',
+const fmt = (n: number) =>
+  `S/ ${Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const fmtFecha = (iso: string) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-const MEDIO_ICON: Record<MedioPago, string> = {
-  Efectivo: '💵',
-  Yape:     '📱',
-  Plin:     '📲',
-  Tarjeta:  '💳',
-};
+// ── Íconos ────────────────────────────────────────────────────────────────────
+const IconSearch = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+const IconX = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+const IconUser = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+);
+const IconCheck = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+);
 
-const fmt = (n: number) => `S/ ${n.toFixed(2)}`;
+// ── Estado de línea de abono ──────────────────────────────────────────────────
+interface LineaAbono {
+  detalle: DeudaDetalle;
+  nombreTratamiento: string;
+  montoInput: string;          // string para el input controlado
+}
 
-const efectivo = (row: DeudaRow) => {
-  const v = parseFloat(row.montoAbonar);
-  return isNaN(v) || v < 0 ? 0 : Math.min(v, row.saldo);
-};
-
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function PagosPage() {
-  const [pagos, setPagos]               = useState<Pago[]>([]);
-  const [citas, setCitas]               = useState<Cita[]>([]);
-  const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState<string | null>(null);
+  // Cobros pendientes
+  const { porCobrar, total: totalPorCobrar, loading: loadingPorCobrar, refresh: refreshPorCobrar } = usePorCobrar();
+  const busquedaRef = useRef<HTMLDivElement>(null);
 
-  const [deudas, setDeudas]           = useState<DeudaRow[]>([]);
-  const [busqueda, setBusqueda]       = useState('');
-  const [medioPago, setMedioPago]     = useState<MedioPago>('Efectivo');
-  const [procesando, setProcesando]   = useState(false);
-  const [procesError, setProcesError] = useState<string | null>(null);
-  const [confirmData, setConfirmData] = useState<ConfirmData | null>(null);
+  // Datos maestros
+  const [pacientes, setPacientes] = useState<Paciente[]>([]);
+  const [tarifario, setTarifario] = useState<Tarifario[]>([]);
+  const [loadingInit, setLoadingInit] = useState(true);
+  const [errorInit, setErrorInit] = useState<string | null>(null);
 
-  const fetchAll = async () => {
+  // Selección de paciente
+  const [busqueda, setBusqueda] = useState('');
+  const [pacienteActivo, setPacienteActivo] = useState<Paciente | null>(null);
+
+  // Deuda y abonos
+  const [lineas, setLineas] = useState<LineaAbono[]>([]);
+  const [historial, setHistorial] = useState<Pago[]>([]);
+  const [loadingDeuda, setLoadingDeuda] = useState(false);
+
+  // Pago
+  const [medioPago, setMedioPago] = useState<MedioPago>('Efectivo');
+  const [procesando, setProcesando] = useState(false);
+  const [errorPago, setErrorPago] = useState<string | null>(null);
+  const [exito, setExito] = useState<{ totalAbonado: number; medioPago: string } | null>(null);
+
+  // ── Carga inicial ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    Promise.all([getPacientes(), getTarifario()])
+      .then(([p, t]) => { setPacientes(p); setTarifario(t); })
+      .catch(() => setErrorInit('No se pudo conectar con el servidor.'))
+      .finally(() => setLoadingInit(false));
+  }, []);
+
+  // ── Filtrar pacientes según búsqueda ──────────────────────────────────────
+  const pacientesFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q || pacienteActivo) return [];
+    return pacientes
+      .filter((p) =>
+        `${p.nombre} ${p.apellido} ${p.dni}`.toLowerCase().includes(q)
+      )
+      .slice(0, 6);
+  }, [busqueda, pacientes, pacienteActivo]);
+
+  // ── Seleccionar paciente → cargar deuda e historial ────────────────────────
+  const seleccionarPaciente = async (p: Paciente) => {
+    setPacienteActivo(p);
+    setBusqueda(`${p.nombre} ${p.apellido}`);
+    setLineas([]);
+    setHistorial([]);
+    setErrorPago(null);
+    setExito(null);
+    setLoadingDeuda(true);
+
     try {
-      const [p, c, t] = await Promise.all([getPagos(), getCitas(), getTratamientos()]);
-      setPagos(p);
-      setCitas(c);
-      setTratamientos(t);
+      const [deuda, hist] = await Promise.all([
+        getDeudaPaciente(p.idPac),
+        getHistorialPaciente(p.idPac),
+      ]);
+
+      // Mapear cada detalle con el nombre del tratamiento desde el tarifario
+      // REALIZADO primero (listo para cobrar), luego PENDIENTE/EN_PROGRESO
+      const lineasMapeadas: LineaAbono[] = deuda
+        .filter((d) => d.estado !== 'PAGADO' && d.estado !== 'ANULADO')
+        .sort((a, b) => (a.estado === 'REALIZADO' ? 0 : 1) - (b.estado === 'REALIZADO' ? 0 : 1))
+        .map((d) => {
+          const tarifa = tarifario.find((t) => t.idTarifa === d.idTarifa);
+          return {
+            detalle: d,
+            nombreTratamiento: tarifa?.nombre ?? `Tratamiento #${d.idTarifa}`,
+            montoInput: '',
+          };
+        });
+
+      setLineas(lineasMapeadas);
+      setHistorial(hist);
     } catch {
-      setError('No se pudo conectar con el servidor.');
+      setErrorPago('No se pudo cargar la información del paciente.');
     } finally {
-      setLoading(false);
+      setLoadingDeuda(false);
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  const limpiarPaciente = () => {
+    setPacienteActivo(null);
+    setBusqueda('');
+    setLineas([]);
+    setHistorial([]);
+    setErrorPago(null);
+    setExito(null);
+  };
 
-  useEffect(() => {
-    const pagadoPorCita: Record<number, number> = {};
-    pagos.forEach((p) => {
-      pagadoPorCita[p.idCita] = (pagadoPorCita[p.idCita] ?? 0) + p.monto;
-    });
+  // ── Actualizar monto de una línea ─────────────────────────────────────────
+  const updateMonto = (idDetalle: number, valor: string) => {
+    setLineas((prev) =>
+      prev.map((l) =>
+        l.detalle.idDetalle === idDetalle ? { ...l, montoInput: valor } : l
+      )
+    );
+  };
 
-    const rows: DeudaRow[] = citas
-      .filter((c) => c.estado === 'Completada' || c.estado === 'Pendiente')
-      .flatMap((c) => {
-        if (!c.idCita) return [];
-        const trat  = tratamientos.find((t) => t.idTrat === c.idTra);
-        const total  = trat?.costo ?? 0;
-        const pagado = pagadoPorCita[c.idCita] ?? 0;
-        const saldo  = Math.max(0, total - pagado);
-        if (saldo === 0) return [];
-        return [{
-          idCita:      c.idCita,
-          paciente:    `${c.paciente.nombre} ${c.paciente.apellido}`,
-          tratamiento: trat?.descripcion ?? '—',
-          total,
-          pagado,
-          saldo,
-          montoAbonar: '',
-        }];
-      });
+  const abonarTodo = (idDetalle: number) => {
+    setLineas((prev) =>
+      prev.map((l) =>
+        l.detalle.idDetalle === idDetalle
+          ? { ...l, montoInput: Number(l.detalle.saldoPendiente).toFixed(2) }
+          : l
+      )
+    );
+  };
 
-    setDeudas(rows);
-  }, [pagos, citas, tratamientos]);
+  // ── Calcular totales ──────────────────────────────────────────────────────
+  const totalDeuda = lineas.reduce((s, l) => s + Number(l.detalle.saldoPendiente), 0);
 
-  const q = busqueda.trim().toLowerCase();
-  const deudasFiltradas = q
-    ? deudas.filter((d) => d.paciente.toLowerCase().includes(q) || d.tratamiento.toLowerCase().includes(q))
-    : deudas;
+  const montoHoy = lineas.reduce((s, l) => {
+    const v = parseFloat(l.montoInput);
+    if (isNaN(v) || v <= 0) return s;
+    return s + Math.min(v, Number(l.detalle.saldoPendiente));
+  }, 0);
 
-  const totalDeuda = deudasFiltradas.reduce((a, r) => a + r.saldo, 0);
-  const montoHoy   = deudasFiltradas.reduce((a, r) => a + efectivo(r), 0);
-  const nuevoSaldo = totalDeuda - montoHoy;
-
-  const updateMonto = (idCita: number, value: string) =>
-    setDeudas((prev) => prev.map((r) => r.idCita === idCita ? { ...r, montoAbonar: value } : r));
-
-  const abonarTodo = (idCita: number) =>
-    setDeudas((prev) => prev.map((r) => r.idCita === idCita ? { ...r, montoAbonar: r.saldo.toFixed(2) } : r));
-
+  // ── Procesar pago ─────────────────────────────────────────────────────────
   const handleProcesar = async () => {
-    const toProcess = deudasFiltradas
-      .map((r) => ({ ...r, mEfectivo: efectivo(r) }))
-      .filter((r) => r.mEfectivo > 0);
+    if (!pacienteActivo || montoHoy === 0) return;
 
-    if (!toProcess.length) return;
+    const detallesAbonar = lineas
+      .map((l) => {
+        const v = parseFloat(l.montoInput);
+        if (isNaN(v) || v <= 0) return null;
+        const montoAbonar = Math.min(v, Number(l.detalle.saldoPendiente));
+        return { idPresupuestoDetalle: l.detalle.idDetalle, montoAbonar };
+      })
+      .filter((x): x is { idPresupuestoDetalle: number; montoAbonar: number } => x !== null);
 
-    const totalAbonar = toProcess.reduce((a, r) => a + r.mEfectivo, 0);
+    if (!detallesAbonar.length) return;
 
     setProcesando(true);
-    setProcesError(null);
+    setErrorPago(null);
 
     try {
-      for (const row of toProcess) {
-        await registrarAbono(row.idCita, row.mEfectivo, medioPago);
-      }
-
-      const [p, c, t] = await Promise.all([getPagos(), getCitas(), getTratamientos()]);
-      setPagos(p);
-      setCitas(c);
-      setTratamientos(t);
-
-      setConfirmData({
-        items: toProcess.map((r) => ({
-          tratamiento: r.tratamiento,
-          paciente:    r.paciente,
-          abonado:     r.mEfectivo,
-          pendiente:   Math.max(0, r.saldo - r.mEfectivo),
-        })),
-        totalAbonado: totalAbonar,
+      await registrarPago({
+        idPaciente: pacienteActivo.idPac,
         medioPago,
+        detalles: detallesAbonar,
       });
-    } catch {
-      setProcesError('Error al procesar el pago. Intenta de nuevo.');
+
+      // Recargar deuda e historial actualizados
+      const [deudaActualizada, histActualizado] = await Promise.all([
+        getDeudaPaciente(pacienteActivo.idPac),
+        getHistorialPaciente(pacienteActivo.idPac),
+      ]);
+
+      const lineasActualizadas: LineaAbono[] = deudaActualizada
+        .filter((d) => d.estado !== 'PAGADO' && d.estado !== 'ANULADO')
+        .sort((a, b) => (a.estado === 'REALIZADO' ? 0 : 1) - (b.estado === 'REALIZADO' ? 0 : 1))
+        .map((d) => {
+          const tarifa = tarifario.find((t) => t.idTarifa === d.idTarifa);
+          return {
+            detalle: d,
+            nombreTratamiento: tarifa?.nombre ?? `Tratamiento #${d.idTarifa}`,
+            montoInput: '',
+          };
+        });
+
+      setLineas(lineasActualizadas);
+      setHistorial(histActualizado);
+      setExito({ totalAbonado: montoHoy, medioPago });
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? 'Error al procesar el pago. Intenta de nuevo.';
+      setErrorPago(msg);
     } finally {
       setProcesando(false);
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+  // ── Loading / Error inicial ────────────────────────────────────────────────
+  if (loadingInit) return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-100">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-500">Cargando...</p>
+        <div className="w-8 h-8 border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-slate-500">Cargando módulo de caja...</p>
       </div>
     </div>
   );
 
-  if (error) return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl max-w-md text-center">
-        <p className="font-semibold">Error</p>
-        <p className="text-sm mt-1">{error}</p>
+  if (errorInit) return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-100">
+      <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl max-w-sm text-center">
+        <p className="font-semibold text-sm">Error de conexión</p>
+        <p className="text-xs mt-1">{errorInit}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-100 p-6">
+      <div className="max-w-6xl mx-auto space-y-5">
 
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Caja / Pagos</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {deudasFiltradas.length} deuda{deudasFiltradas.length !== 1 ? 's' : ''} pendiente{deudasFiltradas.length !== 1 ? 's' : ''}
-          </p>
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div>
+          <h1 className="text-base font-semibold text-slate-900">Caja</h1>
+          <p className="text-xs text-slate-400 mt-0.5">Registra abonos sobre presupuestos de tratamiento</p>
         </div>
 
-        <div className="flex gap-6 items-start">
-
-          {/* ── Panel principal ── */}
-          <div className="flex-1 min-w-0 space-y-4">
-
-            {/* Buscador */}
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Buscar por paciente o tratamiento..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+        {/* ── Panel Por cobrar ─────────────────────────────────────────────── */}
+        {loadingPorCobrar && porCobrar.length === 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+            <div className="h-3.5 w-28 bg-slate-200 rounded animate-pulse mb-4" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[0, 1].map((i) => (
+                <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />
+              ))}
             </div>
+          </div>
+        )}
 
-            {/* Tabla de Deudas */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
-                <h2 className="text-sm font-semibold text-gray-700">Deudas Pendientes</h2>
+        {porCobrar.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-slate-700">Por cobrar</p>
+                <span className="text-[10px] font-semibold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">
+                  {totalPorCobrar} paciente{totalPorCobrar !== 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50/30">
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Paciente</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Tratamiento</th>
-                      <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Total</th>
-                      <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Pagado a la fecha</th>
-                      <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Saldo Pendiente</th>
-                      <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Monto a Abonar</th>
-                      <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deudasFiltradas.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-5 py-14 text-center text-gray-400">
-                          {busqueda ? 'Sin resultados para esa búsqueda.' : 'No hay deudas pendientes.'}
-                        </td>
-                      </tr>
-                    ) : (
-                      deudasFiltradas.map((row, i) => {
-                        const val    = parseFloat(row.montoAbonar);
-                        const isOver = !isNaN(val) && val > row.saldo;
-                        const active = !isNaN(val) && val > 0;
-                        return (
-                          <tr
-                            key={row.idCita}
-                            className={`border-b border-gray-50 transition-colors ${
-                              active ? 'bg-blue-50/25' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50/25'
-                            }`}
-                          >
-                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">{row.paciente}</td>
-                            <td className="px-5 py-3.5 text-gray-700">{row.tratamiento}</td>
-                            <td className="px-5 py-3.5 text-right font-mono text-gray-700 whitespace-nowrap">{fmt(row.total)}</td>
-                            <td className="px-5 py-3.5 text-right font-mono text-gray-500 whitespace-nowrap">{fmt(row.pagado)}</td>
-                            <td className="px-5 py-3.5 text-right font-mono whitespace-nowrap">
-                              <span className="font-semibold text-red-500">{fmt(row.saldo)}</span>
-                            </td>
-                            <td className="px-5 py-3.5">
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="relative">
-                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none select-none">S/</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max={row.saldo}
-                                    step="0.01"
-                                    value={row.montoAbonar}
-                                    onChange={(e) => updateMonto(row.idCita, e.target.value)}
-                                    placeholder="0.00"
-                                    className={`w-28 pl-8 pr-2 py-1.5 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                                      isOver
-                                        ? 'border-red-400 bg-red-50 text-red-700 focus:ring-red-300'
-                                        : 'border-gray-200 bg-white text-gray-900 focus:ring-blue-400'
-                                    }`}
-                                  />
-                                </div>
-                                {isOver && (
-                                  <span className="text-xs text-red-500">Supera el saldo</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-5 py-3.5 text-center">
-                              <button
-                                onClick={() => abonarTodo(row.idCita)}
-                                className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                              >
-                                Abonar Todo
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <button
+                onClick={refreshPorCobrar}
+                title="Refrescar"
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
             </div>
-
-            {/* Historial de pagos */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
-                <h2 className="text-sm font-semibold text-gray-700">Historial de Pagos</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50/30">
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">ID</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cita</th>
-                      <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Monto</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</th>
-                      <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagos.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-5 py-8 text-center text-gray-400">No hay pagos registrados.</td>
-                      </tr>
-                    ) : (
-                      pagos.map((p, i) => (
-                        <tr key={p.idPago ?? i} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                          <td className="px-5 py-3 text-gray-400 font-mono text-xs">{p.idPago}</td>
-                          <td className="px-5 py-3 text-gray-600 font-mono text-xs">#{p.idCita}</td>
-                          <td className="px-5 py-3 text-right font-mono font-semibold text-gray-900">{fmt(p.monto)}</td>
-                          <td className="px-5 py-3 text-gray-600 text-xs whitespace-nowrap">{p.fechaPago}</td>
-                          <td className="px-5 py-3 text-center">
-                            <span className="bg-green-100 text-green-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">Pagado</span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {porCobrar.map((pc) => (
+                <button
+                  key={pc.paciente.idPac}
+                  onClick={() => {
+                    seleccionarPaciente(pc.paciente);
+                    busquedaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="text-left bg-slate-50 border border-slate-200 rounded-xl p-3 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-700 flex-shrink-0">
+                      {pc.paciente.nombre.charAt(0)}{pc.paciente.apellido.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-900 truncate">
+                        {pc.paciente.nombre} {pc.paciente.apellido}
+                      </p>
+                      <p className="text-[10px] text-slate-400">DNI: {pc.paciente.dni}</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mb-1">
+                    {pc.detallesPendientes.length} tratamiento{pc.detallesPendientes.length !== 1 ? 's' : ''} por cobrar
+                  </p>
+                  <p className="text-sm font-semibold text-indigo-600 font-mono mb-2">
+                    {fmt(pc.totalPendiente)}
+                  </p>
+                  <span className="block text-[10px] font-semibold bg-indigo-600 text-white px-2.5 py-1 rounded-lg text-center">
+                    Cobrar ahora
+                  </span>
+                </button>
+              ))}
             </div>
+          </div>
+        )}
 
+        {/* ── Buscador de paciente ─────────────────────────────────────────── */}
+        <div ref={busquedaRef} className="bg-white border border-slate-200 rounded-2xl p-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Paso 1 — Seleccionar paciente</p>
+
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><IconSearch /></span>
+            <input
+              type="text"
+              placeholder="Buscar por nombre, apellido o DNI..."
+              value={busqueda}
+              onChange={(e) => { setBusqueda(e.target.value); setPacienteActivo(null); }}
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400 placeholder-slate-400 transition"
+            />
+            {busqueda && (
+              <button
+                onClick={limpiarPaciente}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <IconX />
+              </button>
+            )}
           </div>
 
-          {/* ── Sidebar ── */}
-          <div className="w-72 flex-shrink-0 space-y-4 sticky top-6">
+          {/* Dropdown de sugerencias */}
+          {pacientesFiltrados.length > 0 && (
+            <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+              {pacientesFiltrados.map((p) => (
+                <button
+                  key={p.idPac}
+                  onClick={() => seleccionarPaciente(p)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-slate-100 last:border-0 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-700 flex-shrink-0">
+                    {p.nombre.charAt(0)}{p.apellido.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{p.nombre} {p.apellido}</p>
+                    <p className="text-xs text-slate-400">DNI: {p.dni}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
 
-            {/* Resumen de Caja */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-5 py-4 bg-gradient-to-br from-blue-600 to-blue-500">
-                <h2 className="text-sm font-semibold text-white">Resumen de Caja</h2>
-                {busqueda && (
-                  <p className="text-xs text-blue-200 mt-0.5 truncate">Filtrando: "{busqueda}"</p>
-                )}
+          {/* Paciente seleccionado */}
+          {pacienteActivo && (
+            <div className="mt-3 flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
+              <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
+                {pacienteActivo.nombre.charAt(0)}{pacienteActivo.apellido.charAt(0)}
               </div>
-              <div className="p-5 divide-y divide-gray-100">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-indigo-900">{pacienteActivo.nombre} {pacienteActivo.apellido}</p>
+                <p className="text-xs text-indigo-500">DNI: {pacienteActivo.dni} · {pacienteActivo.telefono}</p>
+              </div>
+              <button onClick={limpiarPaciente} className="text-indigo-400 hover:text-indigo-600 transition-colors">
+                <IconX />
+              </button>
+            </div>
+          )}
+        </div>
 
-                <div className="pb-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Deuda del Paciente</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1 font-mono">{fmt(totalDeuda)}</p>
-                </div>
+        {/* ── Contenido principal (visible solo con paciente activo) ─────── */}
+        {pacienteActivo && (
+          <div className="flex gap-5 items-start">
 
-                <div className="py-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Monto a Pagar Hoy</p>
-                  <p className={`text-2xl font-bold mt-1 font-mono transition-colors ${
-                    montoHoy > 0 ? 'text-blue-600' : 'text-gray-300'
-                  }`}>
-                    {fmt(montoHoy)}
-                  </p>
-                </div>
+            {/* ── Panel izquierdo: deuda + historial ─────────────────────── */}
+            <div className="flex-1 min-w-0 space-y-4">
 
-                <div className="pt-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nuevo Saldo tras el Pago</p>
-                  <p className={`text-2xl font-bold mt-1 font-mono transition-colors ${
-                    nuevoSaldo === 0 && montoHoy > 0
-                      ? 'text-green-500'
-                      : montoHoy > 0
-                      ? 'text-orange-500'
-                      : 'text-gray-300'
-                  }`}>
-                    {fmt(nuevoSaldo)}
-                  </p>
-                  {nuevoSaldo === 0 && montoHoy > 0 && (
-                    <p className="text-xs text-green-500 font-medium mt-1">Deuda saldada</p>
+              {/* Deuda pendiente */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Paso 2 — Deuda pendiente</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Ingresa el monto a abonar por cada tratamiento</p>
+                  </div>
+                  {totalDeuda > 0 && (
+                    <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
+                      Total deuda: {fmt(totalDeuda)}
+                    </span>
                   )}
                 </div>
 
-              </div>
-            </div>
-
-            {/* Medio de Pago */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Medio de Pago</p>
-              <div className="grid grid-cols-2 gap-2">
-                {MEDIOS.map((m) => (
-                  <button
-                    key={m.value}
-                    onClick={() => setMedioPago(m.value)}
-                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all cursor-pointer ${
-                      medioPago === m.value
-                        ? MEDIO_STYLE[m.value]
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>{MEDIO_ICON[m.value]}</span>
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {procesError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
-                {procesError}
-              </div>
-            )}
-
-            {/* Botón procesar */}
-            <button
-              onClick={handleProcesar}
-              disabled={montoHoy === 0 || procesando}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm px-4 py-3.5 rounded-2xl transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed"
-            >
-              {procesando ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2M5 9h14l1 12H4L5 9z" />
-                  </svg>
-                  {montoHoy > 0 ? `Procesar · ${fmt(montoHoy)}` : 'Procesar Pago'}
-                </>
-              )}
-            </button>
-
-          </div>
-        </div>
-      </div>
-
-      {/* ── Modal de Confirmación ── */}
-      {confirmData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-
-            {/* Header verde */}
-            <div className="bg-green-500 px-6 py-5 flex items-center gap-4">
-              <div className="w-11 h-11 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-white">Pago Registrado</h2>
-                <p className="text-xs text-green-100 mt-0.5">
-                  {MEDIO_ICON[confirmData.medioPago]} Vía {confirmData.medioPago}
-                </p>
-              </div>
-            </div>
-
-            {/* Cuerpo */}
-            <div className="px-6 py-5 space-y-4">
-
-              {/* Detalle por tratamiento */}
-              <div className="space-y-1">
-                {confirmData.items.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start justify-between gap-4 py-2.5 border-b border-gray-100 last:border-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{item.tratamiento}</p>
-                      <p className="text-xs text-gray-500 truncate">{item.paciente}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-green-600">+{fmt(item.abonado)}</p>
-                      {item.pendiente > 0 ? (
-                        <p className="text-xs text-orange-500 mt-0.5">Pendiente: {fmt(item.pendiente)}</p>
-                      ) : (
-                        <p className="text-xs text-green-500 mt-0.5">Saldado</p>
-                      )}
-                    </div>
+                {loadingDeuda ? (
+                  <div className="flex items-center justify-center py-12 gap-2 text-slate-400">
+                    <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Cargando deuda...</span>
                   </div>
-                ))}
+                ) : lineas.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <IconCheck />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700">Sin deuda pendiente</p>
+                    <p className="text-xs text-slate-400">Este paciente no tiene saldos por saldar.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/40">
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tratamiento</th>
+                          <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio</th>
+                          <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Saldo</th>
+                          <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Abonar</th>
+                          <th className="px-3 py-3"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lineas.map((l) => {
+                          const val = parseFloat(l.montoInput);
+                          const excede = !isNaN(val) && val > Number(l.detalle.saldoPendiente);
+                          const activa = !isNaN(val) && val > 0 && !excede;
+                          return (
+                            <tr
+                              key={l.detalle.idDetalle}
+                              className={`border-b border-slate-50 transition-colors ${activa ? 'bg-indigo-50/30' : ''}`}
+                            >
+                              <td className="px-5 py-3.5">
+                                <p className="font-medium text-slate-900 text-sm">{l.nombreTratamiento}</p>
+                                {l.detalle.numeroFdi && (
+                                  <p className="text-xs text-slate-400">Pieza FDI: {l.detalle.numeroFdi}</p>
+                                )}
+                                <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 ${
+                                  l.detalle.estado === 'REALIZADO'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {l.detalle.estado === 'REALIZADO' ? 'Listo para cobrar' : 'En tratamiento'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 text-right font-mono text-slate-600 whitespace-nowrap">
+                                {fmt(l.detalle.precioUnitario)}
+                              </td>
+                              <td className="px-5 py-3.5 text-right font-mono font-semibold text-red-500 whitespace-nowrap">
+                                {fmt(l.detalle.saldoPendiente)}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <div className="relative flex justify-center">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">S/</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={l.detalle.saldoPendiente}
+                                    step="0.01"
+                                    value={l.montoInput}
+                                    onChange={(e) => updateMonto(l.detalle.idDetalle, e.target.value)}
+                                    placeholder="0.00"
+                                    className={`w-28 pl-8 pr-2 py-1.5 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition ${
+                                      excede
+                                        ? 'border-red-300 bg-red-50 text-red-700 focus:ring-red-300'
+                                        : activa
+                                        ? 'border-indigo-300 bg-indigo-50 text-indigo-900 focus:ring-indigo-300'
+                                        : 'border-slate-200 bg-white text-slate-900 focus:ring-indigo-300'
+                                    }`}
+                                  />
+                                </div>
+                                {excede && (
+                                  <p className="text-[10px] text-red-500 text-center mt-0.5">Excede el saldo</p>
+                                )}
+                              </td>
+                              <td className="px-3 py-3.5">
+                                <button
+                                  onClick={() => abonarTodo(l.detalle.idDetalle)}
+                                  className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                  Todo
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
-              {/* Total abonado */}
-              <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-sm font-semibold text-gray-700">Total pagado hoy</p>
-                <p className="text-lg font-bold text-blue-600 font-mono">{fmt(confirmData.totalAbonado)}</p>
+              {/* Historial */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
+                  <p className="text-sm font-semibold text-slate-700">Historial de pagos</p>
+                </div>
+                {historial.length === 0 ? (
+                  <p className="px-5 py-8 text-sm text-slate-400 text-center">Sin pagos registrados para este paciente.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/40">
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">#</th>
+                        <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Monto</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Medio</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historial.map((p, i) => (
+                        <tr key={p.idPago ?? i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-3 text-xs text-slate-400 font-mono">{p.idPago}</td>
+                          <td className="px-5 py-3 text-right font-mono font-semibold text-slate-900 whitespace-nowrap">
+                            {fmt(Number(p.montoTotal))}
+                          </td>
+                          <td className="px-5 py-3 text-xs text-slate-600">{p.medioPago}</td>
+                          <td className="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">{fmtFecha(p.fechaPago)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* ── Sidebar: resumen + acción ─────────────────────────────── */}
+            <div className="w-64 flex-shrink-0 space-y-4 sticky top-20">
+
+              {/* Resumen */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-[#0F172A]">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Resumen</p>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Deuda total</p>
+                    <p className="text-xl font-semibold text-slate-900 font-mono">{fmt(totalDeuda)}</p>
+                  </div>
+                  <div className="h-px bg-slate-100" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">A cobrar ahora</p>
+                    <p className={`text-xl font-semibold font-mono transition-colors ${montoHoy > 0 ? 'text-indigo-600' : 'text-slate-300'}`}>
+                      {fmt(montoHoy)}
+                    </p>
+                  </div>
+                  <div className="h-px bg-slate-100" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Saldo restante</p>
+                    <p className={`text-xl font-semibold font-mono transition-colors ${
+                      totalDeuda - montoHoy === 0 && montoHoy > 0
+                        ? 'text-emerald-500'
+                        : montoHoy > 0
+                        ? 'text-amber-500'
+                        : 'text-slate-300'
+                    }`}>
+                      {fmt(Math.max(0, totalDeuda - montoHoy))}
+                    </p>
+                    {totalDeuda - montoHoy === 0 && montoHoy > 0 && (
+                      <p className="text-[11px] text-emerald-500 font-medium mt-0.5">Deuda saldada ✓</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Aviso saldo pendiente para próxima cita */}
-              {confirmData.items.some((it) => it.pendiente > 0) && (
-                <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                  <p className="text-xs font-semibold text-orange-700">Saldo para la próxima cita</p>
-                  <p className="text-sm text-orange-600 mt-0.5">
-                    Quedan{' '}
-                    <span className="font-bold">
-                      {fmt(confirmData.items.reduce((a, it) => a + it.pendiente, 0))}
-                    </span>{' '}
-                    por cancelar en futuras visitas.
-                  </p>
+              {/* Medio de pago */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4">
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-3">Paso 3 — Medio de pago</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {MEDIOS.map((m) => (
+                    <button
+                      key={m.value}
+                      onClick={() => setMedioPago(m.value)}
+                      className={`text-xs font-semibold py-2 rounded-xl border-2 transition-all ${
+                        medioPago === m.value ? m.color : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Error */}
+              {errorPago && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-3 rounded-xl leading-relaxed">
+                  {errorPago}
                 </div>
               )}
 
-              <button
-                onClick={() => setConfirmData(null)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors cursor-pointer"
-              >
-                Cerrar
-              </button>
-            </div>
+              {/* Éxito */}
+              {exito && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-4 py-3 rounded-xl leading-relaxed">
+                  <p className="font-semibold">Pago registrado ✓</p>
+                  <p className="mt-0.5">{fmt(exito.totalAbonado)} vía {exito.medioPago}</p>
+                </div>
+              )}
 
+              {/* Botón procesar */}
+              <button
+                onClick={handleProcesar}
+                disabled={montoHoy === 0 || procesando || lineas.length === 0}
+                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm py-3 rounded-2xl transition-colors disabled:cursor-not-allowed"
+              >
+                {procesando ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    {montoHoy > 0 ? `Cobrar ${fmt(montoHoy)}` : 'Cobrar'}
+                  </>
+                )}
+              </button>
+
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Estado vacío — sin paciente seleccionado */}
+        {!pacienteActivo && !busqueda && (
+          <div className="bg-white border border-slate-200 rounded-2xl py-20 flex flex-col items-center gap-3 text-center">
+            <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+              <IconUser />
+            </div>
+            <p className="text-sm font-medium text-slate-700">Busca un paciente para comenzar</p>
+            <p className="text-xs text-slate-400 max-w-xs">
+              Escribe el nombre, apellido o DNI del paciente en el buscador de arriba. Verás sus tratamientos con saldo pendiente y podrás registrar el cobro.
+            </p>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

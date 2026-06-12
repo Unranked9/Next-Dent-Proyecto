@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { Cita } from '../types/cita';
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8080/api',
+  baseURL: 'http://localhost:8080/api/citas',
 });
 
 api.interceptors.response.use(

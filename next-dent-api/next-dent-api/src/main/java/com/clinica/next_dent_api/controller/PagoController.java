@@ -13,10 +13,17 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pagos")
+@CrossOrigin(origins = "*")   // ← mismo patrón que CitaController
 @RequiredArgsConstructor
 public class PagoController {
 
     private final PagoService pagoService;
+
+    // ── NUEVO: devuelve todos los pagos (necesario para KPI "Cobrado hoy") ──
+    @GetMapping
+    public ResponseEntity<List<Pago>> listarTodos() {
+        return ResponseEntity.ok(pagoService.obtenerTodos());
+    }
 
     @PostMapping
     public ResponseEntity<Pago> registrarPago(@RequestBody PagoRequestDTO dto) {
