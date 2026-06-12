@@ -1,6 +1,7 @@
 export interface Anamnesis {
   idAnamnesis?: number;
   idPaciente: number;
+  idCiclo?: number;
   respuestasJson?: string;
 }
 

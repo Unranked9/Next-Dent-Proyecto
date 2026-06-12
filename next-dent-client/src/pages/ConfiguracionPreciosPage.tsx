@@ -21,8 +21,42 @@ const EMPTY_FORM: FormData = {
 };
 
 const formatPrecio = (precio: number) =>
-  `S/. ${precio.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `S/ ${precio.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// ── Íconos inline ─────────────────────────────────────────────────────────────
+const IconSearch = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+const IconPlus = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+  </svg>
+);
+const IconPencil = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+  </svg>
+);
+const IconTrash = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3M4 7h16" />
+  </svg>
+);
+const IconX = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+const IconAlert = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+  </svg>
+);
+
+// ── Componente principal ───────────────────────────────────────────────────────
 export default function ConfiguracionPreciosPage() {
   const [tarifas, setTarifas] = useState<Tarifario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +68,6 @@ export default function ConfiguracionPreciosPage() {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchTarifas = () =>
@@ -50,29 +83,18 @@ export default function ConfiguracionPreciosPage() {
   );
 
   const openCreate = () => {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
-    setModalOpen(true);
+    setEditing(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true);
   };
 
   const openEdit = (t: Tarifario) => {
     setEditing(t);
-    setForm({
-      codigo: t.codigo,
-      nombre: t.nombre,
-      categoria: t.categoria,
-      precio: t.precio,
-    });
+    setForm({ codigo: t.codigo, nombre: t.nombre, categoria: t.categoria, precio: t.precio });
     setFormError(null);
     setModalOpen(true);
   };
 
   const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
+    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null);
   };
 
   const handleChange = (
@@ -97,12 +119,8 @@ export default function ConfiguracionPreciosPage() {
       setFormError('El nombre del tratamiento es obligatorio.');
       return;
     }
-    if (form.precio < 0) {
-      setFormError('El precio no puede ser negativo.');
-      return;
-    }
-    if (form.precio === 0) {
-      setFormError('El precio debe ser mayor a S/. 0.00.');
+    if (form.precio <= 0) {
+      setFormError('El precio debe ser mayor a S/ 0.00.');
       return;
     }
 
@@ -137,12 +155,13 @@ export default function ConfiguracionPreciosPage() {
     }
   };
 
+  // ── Estados de carga / error ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500">Cargando tarifario...</p>
+          <div className="w-9 h-9 border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-500">Cargando tarifario...</p>
         </div>
       </div>
     );
@@ -150,9 +169,9 @@ export default function ConfiguracionPreciosPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl max-w-md text-center">
-          <p className="font-semibold text-base">Error</p>
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl max-w-md text-center">
+          <p className="font-semibold">Error de conexión</p>
           <p className="text-sm mt-1">{error}</p>
         </div>
       </div>
@@ -160,154 +179,185 @@ export default function ConfiguracionPreciosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="bg-slate-100 min-h-screen p-6">
+      <div className="max-w-6xl mx-auto space-y-5">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        {/* ── Cabecera ────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Configuración de Precios y Tarifario
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {tarifas.length} tratamiento{tarifas.length !== 1 ? 's' : ''} registrado{tarifas.length !== 1 ? 's' : ''}
+            <h1 className="text-xl font-bold text-slate-800">Configuración de Precios</h1>
+            <p className="text-sm font-medium text-slate-500 mt-0.5">
+              Tarifario vigente del consultorio
             </p>
           </div>
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-2 text-sm font-medium transition-colors shadow-sm whitespace-nowrap"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Añadir Tratamiento
+            <IconPlus />
+            Nueva tarifa
           </button>
         </div>
 
-        {/* Search */}
-        <div className="mb-4">
+        {/* ── Banner alerta (sin tarifas) ──────────────────────────────────── */}
+        {tarifas.length === 0 && (
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <span className="text-amber-500 mt-0.5 flex-shrink-0"><IconAlert /></span>
+            <div>
+              <p className="text-sm font-medium text-amber-800">No hay tarifas activas</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Agrega al menos una tarifa para que los presupuestos puedan calcularse correctamente.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Filtro ──────────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
           <div className="relative max-w-sm">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-            </svg>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <IconSearch />
+            </span>
             <input
               type="text"
               placeholder="Buscar tratamiento..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
             />
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-wide text-xs">Código</th>
-                <th className="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-wide text-xs">Categoría</th>
-                <th className="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-wide text-xs">Tratamiento</th>
-                <th className="px-5 py-3 text-right font-semibold text-gray-600 uppercase tracking-wide text-xs">Precio</th>
-                <th className="px-5 py-3 text-right font-semibold text-gray-600 uppercase tracking-wide text-xs">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tarifasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-gray-400">
-                    {busqueda
-                      ? `No se encontraron tratamientos con "${busqueda}".`
-                      : 'No hay tratamientos registrados.'}
-                  </td>
-                </tr>
-              ) : (
-                tarifasFiltradas.map((t, i) => (
-                  <tr
-                    key={t.idTarifa}
-                    className={`border-b border-gray-50 hover:bg-blue-50/40 transition-colors ${
-                      i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                    }`}
-                  >
-                    <td className="px-5 py-3.5 font-mono text-gray-500 text-xs">{t.codigo}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="inline-block bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full">
-                        {t.categoria}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-900 font-medium">{t.nombre}</td>
-                    <td className="px-5 py-3.5 text-right font-semibold text-gray-800 tabular-nums">
-                      {formatPrecio(t.precio)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          onClick={() => openEdit(t)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
-                          </svg>
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => t.idTarifa !== undefined && handleDelete(t.idTarifa)}
-                          disabled={deletingId === t.idTarifa}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          {deletingId === t.idTarifa ? (
-                            <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3M4 7h16" />
-                            </svg>
-                          )}
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
+        {/* ── Tabla ───────────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          {tarifasFiltradas.length === 0 ? (
+            <div className="py-20 flex flex-col items-center gap-2">
+              <svg className="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <p className="text-slate-500 font-medium text-sm">
+                {busqueda ? `Sin resultados para "${busqueda}"` : 'No hay tarifas registradas'}
+              </p>
+              <p className="text-slate-400 text-xs">
+                {busqueda ? 'Intenta con otros términos.' : 'Crea la primera tarifa del consultorio.'}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">#</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Código</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Tratamiento</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Categoría</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">Precio (S/)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Estado</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">Acciones</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {tarifasFiltradas.map((t, i) => {
+                    const isActivo = !t.estado || t.estado === 'Activo';
+                    return (
+                      <tr
+                        key={t.idTarifa}
+                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors group"
+                      >
+                        <td className="px-6 py-4 text-sm text-slate-400 font-mono">{i + 1}</td>
+                        <td className="px-6 py-4 text-sm font-mono text-slate-500">{t.codigo}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-slate-700">{t.nombre}</td>
+                        <td className="px-6 py-4">
+                          <span className="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            {t.categoria}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-800 text-right tabular-nums">
+                          {formatPrecio(t.precio)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            isActivo
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {isActivo ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEdit(t)}
+                              className="flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                            >
+                              <IconPencil />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => t.idTarifa !== undefined && handleDelete(t.idTarifa)}
+                              disabled={deletingId === t.idTarifa}
+                              className="flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {deletingId === t.idTarifa
+                                ? <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                : <IconTrash />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+
+        {/* Contador */}
+        {tarifasFiltradas.length > 0 && (
+          <p className="text-xs text-slate-400 text-right">
+            {tarifasFiltradas.length} tarifa{tarifasFiltradas.length !== 1 ? 's' : ''} activa{tarifasFiltradas.length !== 1 ? 's' : ''}
+          </p>
+        )}
       </div>
 
-      {/* Modal */}
+      {/* ── Modal ────────────────────────────────────────────────────────── */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">
-                {editing ? 'Editar tratamiento' : 'Nuevo tratamiento'}
-              </h2>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl mx-4">
+
+            {/* Header modal */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {editing ? 'Editar tarifa' : 'Nueva tarifa'}
+                </h2>
+              </div>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <IconX />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-lg">
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-xl">
                   {formError}
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-gray-700">Código</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">Código</label>
                   <input
                     name="codigo"
                     type="text"
@@ -315,11 +365,11 @@ export default function ConfiguracionPreciosPage() {
                     onChange={handleChange}
                     placeholder="Ej: OP-001"
                     required
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-gray-700">Precio (S/.)</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">Precio (S/)</label>
                   <input
                     name="precio"
                     type="number"
@@ -329,13 +379,13 @@ export default function ConfiguracionPreciosPage() {
                     onChange={handleChange}
                     placeholder="0.00"
                     required
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-700">Nombre del tratamiento</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-600">Nombre del tratamiento</label>
                 <input
                   name="nombre"
                   type="text"
@@ -343,18 +393,18 @@ export default function ConfiguracionPreciosPage() {
                   onChange={handleChange}
                   placeholder="Ej: Extracción simple"
                   required
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-700">Categoría</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-600">Categoría</label>
                 <select
                   name="categoria"
                   value={form.categoria}
                   onChange={handleChange}
                   required
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
+                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white text-slate-700"
                 >
                   {CATEGORIAS.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -362,23 +412,21 @@ export default function ConfiguracionPreciosPage() {
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="text-sm font-medium text-gray-600 hover:text-gray-900 px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-5 py-2 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium px-5 py-2 rounded-xl transition-colors disabled:cursor-not-allowed"
                 >
-                  {saving && (
-                    <div className="w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />
-                  )}
-                  {editing ? 'Guardar cambios' : 'Crear tratamiento'}
+                  {saving && <div className="w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />}
+                  {editing ? 'Guardar cambios' : 'Crear tarifa'}
                 </button>
               </div>
             </form>

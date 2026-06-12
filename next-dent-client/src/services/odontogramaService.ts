@@ -14,20 +14,6 @@ export interface OdontogramaData {
  * GET del odontograma de un paciente.
  * Devuelve null si el backend responde 204 (paciente nuevo) o hay error de red.
  */
-export const getPorPaciente = (
-  idPaciente: number,
-  tipo?: 'INICIAL' | 'ACTUAL',
-): Promise<OdontogramaData | null> =>
-  api
-    .get<OdontogramaData>(`/odontograma/paciente/${idPaciente}`, {
-      params: tipo ? { tipo } : undefined,
-    })
-    .then((res) => res.data || null)
-    .catch(() => null);
-
-/**
- * GET del odontograma de un ciclo específico.
- */
 export const getPorCiclo = (
   idCiclo: number,
   tipo?: 'INICIAL' | 'ACTUAL',
@@ -39,11 +25,24 @@ export const getPorCiclo = (
     .then((res) => res.data || null)
     .catch(() => null);
 
+export const getPorPaciente = (
+  idPaciente: number,
+  tipo?: 'INICIAL' | 'ACTUAL',
+): Promise<OdontogramaData | null> =>
+  api
+    .get<OdontogramaData>(`/odontograma/paciente/${idPaciente}`, {
+      params: tipo ? { tipo } : undefined,
+    })
+    .then((res) => res.data || null)
+    .catch(() => null);
+
 export const guardarDiente = (diente: DienteEstado): Promise<DienteEstado> =>
   api.post<DienteEstado>('/odontograma/diente', diente).then((res) => res.data);
 
 /**
- * Upsert integral adaptado para soportar Ciclos Clínicos.
+ * Upsert integral: crea el odontograma si no existe y guarda/actualiza los dientes.
+ * Endpoint: POST /odontograma/paciente/{idPaciente}/guardar?tipo=INICIAL
+ * Devuelve el OdontogramaDTO completo con los IDs generados por la BD.
  */
 export const guardarCompleto = (
   idPaciente: number,
@@ -55,8 +54,8 @@ export const guardarCompleto = (
   api
     .post<OdontogramaData>(
       `/odontograma/paciente/${idPaciente}/guardar`,
-      { dientes, observaciones, idCiclo },
-      { params: { tipo, idCiclo } },
+      { dientes, observaciones },
+      { params: { tipo, ...(idCiclo !== undefined ? { idCiclo } : {}) } },
     )
     .then((res) => res.data);
 
@@ -96,4 +95,5 @@ export const guardarTratamientosMulti = async (
     console.error('Error al guardar tratamientos multi-pieza:', error);
     throw error;
   }
+  
 };

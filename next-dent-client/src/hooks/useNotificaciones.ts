@@ -53,16 +53,18 @@ const esHoy = (fechaStr: string): boolean => {
 
 // Convierte una cita en notificación según su estado
 const citaANotificacion = (cita: Cita): Notificacion | null => {
+  if (!cita.paciente) return null;
   const estado = cita.estado?.toLowerCase() ?? '';
   const nombre = `${cita.paciente.nombre} ${cita.paciente.apellido}`;
+  const hora = cita.hora ?? '';
 
   if (estado === 'pendiente') {
     return {
       id: `cita-pendiente-${cita.idCita}`,
       tipo: 'cita_pendiente',
       titulo: 'Cita pendiente',
-      descripcion: `${nombre} a las ${cita.hora}`,
-      hora: cita.hora,
+      descripcion: `${nombre} a las ${hora}`,
+      hora,
       leida: false,
       citaId: cita.idCita,
     };
@@ -73,8 +75,8 @@ const citaANotificacion = (cita: Cita): Notificacion | null => {
       id: `cita-confirmada-${cita.idCita}`,
       tipo: 'cita_confirmada',
       titulo: 'Cita confirmada',
-      descripcion: `${nombre} a las ${cita.hora}`,
-      hora: cita.hora,
+      descripcion: `${nombre} a las ${hora}`,
+      hora,
       leida: false,
       citaId: cita.idCita,
     };
@@ -93,7 +95,7 @@ export function useNotificaciones(): NotificacionesState {
   const fetchCitas = useCallback(async () => {
     try {
       const [citas, pacientes] = await Promise.all([getCitas(), getPacientes()]);
-      const citasHoy = citas.filter((c) => esHoy(c.fecha));
+      const citasHoy = citas.filter((c) => c.fecha !== null && esHoy(c.fecha));
 
       const nuevas: Notificacion[] = citasHoy
         .map(citaANotificacion)

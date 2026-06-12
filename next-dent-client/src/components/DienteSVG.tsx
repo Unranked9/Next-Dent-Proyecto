@@ -73,7 +73,7 @@ interface DienteSVGProps {
   readOnly?: boolean;
 }
 
-const DienteSVG: React.FC<DienteSVGProps> = ({ fdi, estado, seleccionados, onSelect, readOnly = false }) => {
+const DienteSVG: React.FC<DienteSVGProps> = ({ fdi, estado, seleccionados, onSelect, readOnly: _readOnly = false }) => {
   const cg  = estado.condicionGeneral;
   
   // VERIFICACIÓN DE EVOLUCIÓN: ¿El backend ya marcó este diente como REALIZADO?

@@ -24,7 +24,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "PowerShell($lines = Get-Content \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\\\\src\\\\components\\\\Odontograma.tsx\" | Measure-Object -Line; $lines.Lines)",
-      "Skill(run)"
+      "Skill(run)",
+      "PowerShell(cd \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\"; npx tsc --noEmit; Write-Host \"Exit code: $LASTEXITCODE\")",
+      "PowerShell(cd \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\"; npx tsc -p tsconfig.app.json --noEmit 2>&1 | Out-String; Write-Host \"Exit code: $LASTEXITCODE\")"
     ]
   }
 }

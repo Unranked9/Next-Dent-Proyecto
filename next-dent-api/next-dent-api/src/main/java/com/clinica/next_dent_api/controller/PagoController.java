@@ -1,14 +1,17 @@
 package com.clinica.next_dent_api.controller;
 
+import com.clinica.next_dent_api.dto.PagoReporteDTO;
 import com.clinica.next_dent_api.dto.PagoRequestDTO;
 import com.clinica.next_dent_api.model.Pago;
 import com.clinica.next_dent_api.model.PresupuestoDetalle;
 import com.clinica.next_dent_api.service.PagoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -39,5 +42,13 @@ public class PagoController {
     @GetMapping("/paciente/{id}/deuda")
     public ResponseEntity<List<PresupuestoDetalle>> deudaActual(@PathVariable Integer id) {
         return ResponseEntity.ok(pagoService.obtenerDeudaActual(id));
+    }
+
+    @GetMapping("/reporte")
+    public ResponseEntity<PagoReporteDTO> getReporte(
+            @RequestParam("desde") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta
+    ) {
+        return ResponseEntity.ok(pagoService.generarReporte(desde, hasta));
     }
 }

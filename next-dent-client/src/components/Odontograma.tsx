@@ -40,15 +40,6 @@ function getLabelHallazgo(diagnostico: string, estadoSalud?: 'BIEN' | 'MAL'): st
 
 // ─── labels & config ──────────────────────────────────────────────────────────
 
-const LABEL_SUPERFICIE: Record<NombreSuperficie | 'general', string> = {
-  supVestibular: 'Vestibular',
-  supLingual:    'Lingual',
-  supMesial:     'Mesial',
-  supDistal:     'Distal',
-  supOclusal:    'Oclusal',
-  general:       'General',
-};
-
 const INICIAL_SUPERFICIE: Record<NombreSuperficie | 'general', string> = {
   supVestibular: 'V',
   supLingual:    'L',
@@ -66,25 +57,6 @@ const LABEL_ZONA: Record<string, string> = {
   oclusal:    'Oclusal',
   general:    'General',
 };
-
-const CONDICIONES_SUPERFICIE: Array<{ label: string; value: CondicionSuperficie; cls: string }> = [
-  { label: 'Sano',          value: 'SANO',         cls: 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50' },
-  { label: 'Caries',        value: 'CARIES',        cls: 'bg-red-500 text-white hover:bg-red-600' },
-  { label: 'Resina (R)',    value: 'RESTAURADO_R',  cls: 'bg-blue-500 text-white hover:bg-blue-600' },
-  { label: 'Amalgama (AM)', value: 'RESTAURADO_AM', cls: 'bg-blue-600 text-white hover:bg-blue-700' },
-  { label: 'Ionómero (IV)', value: 'RESTAURADO_IV', cls: 'bg-blue-400 text-white hover:bg-blue-500' },
-  { label: 'Porcelana (PC)',value: 'RESTAURADO_PC', cls: 'bg-indigo-500 text-white hover:bg-indigo-600' },
-];
-
-const CONDICIONES_GENERAL: Array<{ label: string; value: CondicionGeneral; cls: string }> = [
-  { label: 'Sano',               value: 'SANO',        cls: 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50' },
-  { label: 'Ausente',            value: 'AUSENTE',     cls: 'bg-slate-500 text-white hover:bg-slate-600' },
-  { label: 'Extracción Ind.',    value: 'EXTRACCION',  cls: 'bg-red-700 text-white hover:bg-red-800' },
-  { label: 'Corona Definitiva',  value: 'CORONA_DEF',  cls: 'bg-blue-500 text-white hover:bg-blue-600' },
-  { label: 'Corona Temporal',    value: 'CORONA_TEMP', cls: 'bg-red-500 text-white hover:bg-red-600' },
-  { label: 'Endodoncia',         value: 'ENDODONCIA',  cls: 'bg-purple-600 text-white hover:bg-purple-700' },
-  { label: 'Implante',           value: 'IMPLANTE',    cls: 'bg-teal-600 text-white hover:bg-teal-700' },
-];
 
 const LABEL_DIAGNOSTICO: Record<string, string> = {
   SANO:            'Sano',
@@ -362,9 +334,6 @@ export default function Odontograma({
   );
   const [seleccionados,  setSeleccionados]  = useState<string[]>([]);
   const [contextoClic,   setContextoClic]   = useState<'CARA' | 'PIEZA' | null>(null);
-  const [condSuperficie, setCondSuperficie] = useState<string | null>(null);
-  const [condGeneral,    setCondGeneral]    = useState<string | null>(null);
-  const [estadoSalud,    setEstadoSalud]    = useState<'BIEN' | 'MAL' | null>(null);
   const [guardando,      setGuardando]      = useState(false);
   const [guardadoOk,     setGuardadoOk]     = useState(false);
 
@@ -426,12 +395,7 @@ export default function Odontograma({
 
         if (!response) { return; }
 
-        // Múltiples fallbacks por si la estructura del JSON varía
-        const idExtraido =
-          response?.odontograma?.idOdontograma ??
-          response?.idOdontograma ??
-          response?.id ??
-          response?.data?.idOdontograma;
+        const idExtraido = response?.idOdontograma ?? null;
 
         if (idExtraido) {
           setIdOdontograma(idExtraido);
@@ -440,11 +404,7 @@ export default function Odontograma({
           console.error("El backend respondió, pero el ID del Odontograma no se encuentra en el JSON. Estructura:", response);
         }
 
-        const fromDB: DienteEstado[] =
-          response?.dientes ??
-          response?.odontograma?.dientes ??
-          response?.data?.dientes ??
-          [];
+        const fromDB: DienteEstado[] = response?.dientes ?? [];
         console.log('[Odontograma] fromDB — dientes no-SANO:', fromDB.filter((d) =>
           d.condicionGeneral !== 'SANO' ||
           d.estadoClinico === 'TRATADO' || d.estadoClinico === 'REALIZADO'
@@ -471,13 +431,6 @@ export default function Odontograma({
 
   // ── derived selection flags ────────────────────────────────────────────────
 
-  const hasFaces    = seleccionados.some((s) => !s.endsWith('-general'));
-  const hasGeneral  = seleccionados.some((s) =>  s.endsWith('-general'));
-  const needsEstado = hasGeneral && condGeneral !== null && REQUIERE_ESTADO.has(condGeneral);
-  const canApply    =
-    seleccionados.length > 0 &&
-    (!hasFaces   || condSuperficie !== null) &&
-    (!hasGeneral || (condGeneral !== null && (!needsEstado || estadoSalud !== null)));
 
   // ── selection handlers ─────────────────────────────────────────────────────
 
@@ -511,46 +464,6 @@ export default function Odontograma({
   const limpiarSeleccion = () => {
     setSeleccionados([]);
     setContextoClic(null);
-    setCondSuperficie(null);
-    setCondGeneral(null);
-    setEstadoSalud(null);
-  };
-
-  const handleCondGeneral = (val: string) => {
-    setCondGeneral((prev) => (prev === val ? null : val));
-    setEstadoSalud(null);
-  };
-
-  // ── apply diagnosis to all selected ───────────────────────────────────────
-
-  const aplicarDiagnostico = () => {
-    if (!canApply) return;
-
-    const byFdi = new Map<number, DienteEstado>();
-    for (const key of seleccionados) {
-      const dashIdx = key.indexOf('-');
-      const fdi  = Number(key.slice(0, dashIdx));
-      const zona = key.slice(dashIdx + 1);
-      const base = byFdi.get(fdi) ?? getDiente(fdi);
-
-      if (zona === 'general') {
-        const condGen = condGeneral! as CondicionGeneral;
-        const nuevoEstado: 'BIEN' | 'MAL' | undefined =
-          REQUIERE_ESTADO.has(condGen) ? (estadoSalud as 'BIEN' | 'MAL') : undefined;
-        byFdi.set(fdi, { ...base, condicionGeneral: condGen, estadoSalud: nuevoEstado });
-      } else {
-        const sup = ZONA_TO_SUP[zona];
-        if (sup && sup !== 'general') {
-          byFdi.set(fdi, { ...base, [sup]: condSuperficie as CondicionSuperficie });
-        }
-      }
-    }
-
-    const updated = Array.from(byFdi.values()).map((d) => ({ ...d, idOdontograma: idOdontograma ?? 0 }));
-    setDientes((prev) =>
-      prev.map((d) => updated.find((u) => u.numeroFdi === d.numeroFdi) ?? d)
-    );
-    limpiarSeleccion();
   };
 
   // ── Smart UI — aplica diagnóstico MINSA de un solo clic ──────────────────
@@ -753,9 +666,6 @@ export default function Odontograma({
       {fdis.slice(split).map(renderTooth)}
     </div>
   );
-
-  const facesCount   = seleccionados.filter((s) => !s.endsWith('-general')).length;
-  const generalCount = seleccionados.filter((s) =>  s.endsWith('-general')).length;
 
   // ── jsx ────────────────────────────────────────────────────────────────────
 

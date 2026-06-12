@@ -1,6 +1,8 @@
 package com.clinica.next_dent_api.service;
 
 import com.clinica.next_dent_api.dto.PagoDetalleItemDTO;
+import com.clinica.next_dent_api.dto.PagoReporteDTO;
+import com.clinica.next_dent_api.dto.PagoPorDiaDTO;
 import com.clinica.next_dent_api.dto.PagoRequestDTO;
 import com.clinica.next_dent_api.model.Pago;
 import com.clinica.next_dent_api.model.PagoDetalle;
@@ -13,8 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +28,31 @@ public class PagoService {
     private final PagoRepository pagoRepository;
     private final PagoDetalleRepository pagoDetalleRepository;
     private final PresupuestoDetalleRepository presupuestoDetalleRepository;
+
+    public PagoReporteDTO generarReporte(LocalDate desde, LocalDate hasta) {
+        LocalDateTime desdeDateTime = desde.atStartOfDay();
+        LocalDateTime hastaDateTime = hasta.atTime(23, 59, 59);
+
+        List<Pago> pagos = pagoRepository.findByFechaPagoBetween(desdeDateTime, hastaDateTime);
+
+        BigDecimal total = pagos.stream()
+                .map(Pago::getMontoTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Map<LocalDate, List<Pago>> agrupadosPorDia = pagos.stream()
+                .collect(Collectors.groupingBy(p -> p.getFechaPago().toLocalDate()));
+
+        List<PagoPorDiaDTO> porDia = agrupadosPorDia.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> new PagoPorDiaDTO(
+                        e.getKey().toString(),
+                        e.getValue().stream().map(Pago::getMontoTotal).reduce(BigDecimal.ZERO, BigDecimal::add),
+                        e.getValue().size()
+                ))
+                .collect(Collectors.toList());
+
+        return new PagoReporteDTO(total, pagos.size(), porDia);
+    }
 
     // ── NUEVO: usado por el KPI "Cobrado hoy" ─────────────────────────────────
     public List<Pago> obtenerTodos() {

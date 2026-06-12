@@ -1,7 +1,9 @@
 package com.clinica.next_dent_api.service;
 
 import com.clinica.next_dent_api.model.Cita;
+import com.clinica.next_dent_api.model.Paciente;
 import com.clinica.next_dent_api.repository.CitaRepository;
+import com.clinica.next_dent_api.repository.PacienteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,9 @@ public class CitaService {
 
     @Autowired
     private CitaRepository citaRepository;
+
+    @Autowired
+    private PacienteRepository pacienteRepository;
 
     public List<Cita> obtenerTodas() {
         return citaRepository.findAll();
@@ -27,6 +32,14 @@ public class CitaService {
     }
 
     public Cita guardarCita(Cita cita) {
+        if (cita.getPaciente() != null && cita.getPaciente().getIdPac() != null) {
+            Paciente paciente = pacienteRepository
+                .findById(cita.getPaciente().getIdPac())
+                .orElseThrow(() -> new RuntimeException(
+                    "Paciente no encontrado: " + cita.getPaciente().getIdPac()
+                ));
+            cita.setPaciente(paciente);
+        }
         return citaRepository.save(cita);
     }
 

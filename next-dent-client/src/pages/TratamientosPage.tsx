@@ -14,17 +14,45 @@ const EMPTY_FORM: FormData = {
   costo: 0,
 };
 
+// ── Íconos inline ─────────────────────────────────────────────────────────────
+const IconSearch = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+const IconPlus = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+  </svg>
+);
+const IconPencil = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+  </svg>
+);
+const IconTrash = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3M4 7h16" />
+  </svg>
+);
+const IconX = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+// ── Componente principal ───────────────────────────────────────────────────────
 export default function TratamientosPage() {
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busqueda, setBusqueda] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tratamiento | null>(null);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchTratamientos = () =>
@@ -35,28 +63,24 @@ export default function TratamientosPage() {
 
   useEffect(() => { fetchTratamientos(); }, []);
 
+  const tratamientosFiltrados = tratamientos.filter((t) => {
+    const q = busqueda.toLowerCase().trim();
+    return !q || t.descripcion.toLowerCase().includes(q);
+  });
+
   const openCreate = () => {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
-    setModalOpen(true);
+    setEditing(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true);
   };
 
   const openEdit = (t: Tratamiento) => {
     setEditing(t);
-    setForm({
-      descripcion: t.descripcion,
-      costo: t.costo,
-    });
+    setForm({ descripcion: t.descripcion, costo: t.costo });
     setFormError(null);
     setModalOpen(true);
   };
 
   const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
+    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,12 +123,13 @@ export default function TratamientosPage() {
     }
   };
 
+  // ── Estados de carga / error ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500">Cargando tratamientos...</p>
+          <div className="w-9 h-9 border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-500">Cargando tratamientos...</p>
         </div>
       </div>
     );
@@ -112,9 +137,9 @@ export default function TratamientosPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl max-w-md text-center">
-          <p className="font-semibold text-base">Error</p>
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl max-w-md text-center">
+          <p className="font-semibold">Error de conexión</p>
           <p className="text-sm mt-1">{error}</p>
         </div>
       </div>
@@ -122,126 +147,150 @@ export default function TratamientosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="bg-slate-100 min-h-screen p-6">
+      <div className="max-w-5xl mx-auto space-y-5">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        {/* ── Cabecera ────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Tratamientos</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {tratamientos.length} tratamiento{tratamientos.length !== 1 ? 's' : ''} registrado{tratamientos.length !== 1 ? 's' : ''}
+            <h1 className="text-xl font-bold text-slate-800">Tratamientos</h1>
+            <p className="text-sm font-medium text-slate-500 mt-0.5">
+              Catálogo de procedimientos clínicos
             </p>
           </div>
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-2 text-sm font-medium transition-colors shadow-sm whitespace-nowrap"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Nuevo Tratamiento
+            <IconPlus />
+            Nuevo tratamiento
           </button>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-wide text-xs">ID</th>
-                <th className="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-wide text-xs">Descripción</th>
-                <th className="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-wide text-xs">Costo</th>
-                <th className="px-5 py-3 text-right font-semibold text-gray-600 uppercase tracking-wide text-xs">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tratamientos.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-gray-400">
-                    No hay tratamientos registrados.
-                  </td>
-                </tr>
-              ) : (
-                tratamientos.map((t, i) => (
-                  <tr
-                    key={t.idTrat}
-                    className={`border-b border-gray-50 hover:bg-blue-50/40 transition-colors ${
-                      i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                    }`}
-                  >
-                    <td className="px-5 py-3.5 text-gray-400 font-mono">{t.idTrat}</td>
-                    <td className="px-5 py-3.5 text-gray-900 font-medium">{t.descripcion}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="inline-block bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                        S/ {t.costo.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          onClick={() => openEdit(t)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
-                          </svg>
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(t.idTrat!)}
-                          disabled={deletingId === t.idTrat}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          {deletingId === t.idTrat ? (
-                            <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3M4 7h16" />
-                            </svg>
-                          )}
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        {/* ── Filtro ──────────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
+          <div className="relative max-w-sm">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <IconSearch />
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar tratamiento..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
+            />
+          </div>
         </div>
+
+        {/* ── Tabla ───────────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          {tratamientosFiltrados.length === 0 ? (
+            <div className="py-20 flex flex-col items-center gap-2">
+              <svg className="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p className="text-slate-500 font-medium text-sm">
+                {busqueda ? `Sin resultados para "${busqueda}"` : 'No hay tratamientos registrados'}
+              </p>
+              <p className="text-slate-400 text-xs">
+                {busqueda ? 'Intenta con otros términos.' : 'Crea el primer tratamiento del catálogo.'}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">#</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Tratamiento</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">Precio base</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tratamientosFiltrados.map((t, i) => (
+                    <tr
+                      key={t.idTrat}
+                      className="border-b border-slate-50 hover:bg-slate-50 transition-colors group"
+                    >
+                      <td className="px-6 py-4 text-sm text-slate-400 font-mono">{i + 1}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-700">{t.descripcion}</td>
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-800 text-right tabular-nums">
+                        S/ {t.costo.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openEdit(t)}
+                            className="flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                          >
+                            <IconPencil />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(t.idTrat!)}
+                            disabled={deletingId === t.idTrat}
+                            className="flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingId === t.idTrat
+                              ? <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                              : <IconTrash />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Contador */}
+        {tratamientosFiltrados.length > 0 && (
+          <p className="text-xs text-slate-400 text-right">
+            {tratamientosFiltrados.length} tratamiento{tratamientosFiltrados.length !== 1 ? 's' : ''}
+          </p>
+        )}
       </div>
 
-      {/* Modal */}
+      {/* ── Modal ────────────────────────────────────────────────────────── */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">
-                {editing ? 'Editar tratamiento' : 'Nuevo tratamiento'}
-              </h2>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl mx-4">
+
+            {/* Header modal */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {editing ? 'Editar tratamiento' : 'Nuevo tratamiento'}
+                </h2>
+              </div>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <IconX />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-lg">
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-xl">
                   {formError}
                 </div>
               )}
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-700">Descripción</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-600">Descripción del tratamiento</label>
                 <input
                   name="descripcion"
                   type="text"
@@ -249,12 +298,12 @@ export default function TratamientosPage() {
                   onChange={handleChange}
                   required
                   placeholder="Ej: Limpieza dental"
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-700">Costo (S/)</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-slate-600">Precio base (S/)</label>
                 <input
                   name="costo"
                   type="number"
@@ -264,26 +313,24 @@ export default function TratamientosPage() {
                   onChange={handleChange}
                   required
                   placeholder="0.00"
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="text-sm font-medium text-gray-600 hover:text-gray-900 px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-5 py-2 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium px-5 py-2 rounded-xl transition-colors disabled:cursor-not-allowed"
                 >
-                  {saving && (
-                    <div className="w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />
-                  )}
+                  {saving && <div className="w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />}
                   {editing ? 'Guardar cambios' : 'Crear tratamiento'}
                 </button>
               </div>

@@ -18,7 +18,7 @@ public class Cita {
     @Column(name = "id_cita")
     private Integer idCita;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_pac")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Paciente paciente;
@@ -34,4 +34,10 @@ public class Cita {
     private String hora;
 
     private String estado;
+
+    @Column(name = "motivo")
+    private String motivo;
+
+    @Column(name = "notas")
+    private String notas;
 }

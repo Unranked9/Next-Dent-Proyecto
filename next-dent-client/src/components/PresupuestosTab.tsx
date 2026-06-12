@@ -265,7 +265,7 @@ export default function PresupuestosTab({ idPaciente, idCiclo }: { idPaciente: n
     if (detalleAEvolucionar === null || doctorSeleccionado === '') return;
     setLoadingEvolucionar(true);
     try {
-      await presupuestoService.evolucionar(detalleAEvolucionar, doctorSeleccionado as number);
+      await presupuestoService.evolucionar(detalleAEvolucionar, doctorSeleccionado as number, '', true);
       const nuevaLista = await presupuestoService.getPorPaciente(idPaciente);
       setLista(nuevaLista);
       setOdontogramaKey((k) => k + 1);

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Cita } from '../types/cita';
+import type { Cita, CitaPayload } from '../types/cita';
 
 const api = axios.create({
   baseURL: 'http://localhost:8080/api/citas',
@@ -8,19 +8,19 @@ const api = axios.create({
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    console.error('Error detallado en Axios:', error);
+    console.error('Error en citaService:', error);
     return Promise.reject(error);
   }
 );
 
 export const getCitas = (): Promise<Cita[]> =>
-  api.get<Cita[]>('/citas').then((res) => res.data);
+  api.get<Cita[]>('').then((res) => res.data);
 
-export const createCita = (cita: Omit<Cita, 'idCita'>): Promise<Cita> =>
-  api.post<Cita>('/citas', cita).then((res) => res.data);
+export const createCita = (payload: CitaPayload): Promise<Cita> =>
+  api.post<Cita>('', payload).then((res) => res.data);
 
-export const updateCita = (id: number, cita: Omit<Cita, 'idCita'>): Promise<Cita> =>
-  api.put<Cita>(`/citas/${id}`, cita).then((res) => res.data);
+export const updateCita = (id: number, payload: CitaPayload): Promise<Cita> =>
+  api.put<Cita>(`/${id}`, payload).then((res) => res.data);
 
 export const deleteCita = (id: number): Promise<void> =>
-  api.delete(`/citas/${id}`).then(() => undefined);
+  api.delete(`/${id}`).then(() => undefined);

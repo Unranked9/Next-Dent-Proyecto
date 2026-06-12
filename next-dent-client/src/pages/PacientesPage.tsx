@@ -52,53 +52,7 @@ const avatarColor = (nombre: string) => {
 const initials = (nombre: string, apellido: string) =>
   `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase();
 
-// ── KPI card ──────────────────────────────────────────────────────────────────
-function KpiCard({
-  icon,
-  label,
-  value,
-  sub,
-  subColor = 'text-slate-400',
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  sub?: string;
-  subColor?: string;
-}) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="text-slate-400">{icon}</span>
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{label}</span>
-      </div>
-      <p className="text-2xl font-semibold text-slate-900 leading-none">{value}</p>
-      {sub && <p className={`text-[11px] mt-1.5 ${subColor}`}>{sub}</p>}
-    </div>
-  );
-}
-
 // ── Íconos inline (evita depender de librerías extra) ─────────────────────────
-const IconUsers = () => (
-  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
-  </svg>
-);
-const IconCalendar = () => (
-  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-  </svg>
-);
-const IconClock = () => (
-  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-const IconCash = () => (
-  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-  </svg>
-);
 const IconSearch = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

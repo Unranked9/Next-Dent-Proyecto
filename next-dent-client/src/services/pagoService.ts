@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Pago } from '../types/pago';
+import type { PagoReporte } from '../types/reporte';
 
 const api = axios.create({
   baseURL: 'http://localhost:8080/api/pagos',
@@ -52,3 +53,7 @@ export const getDeudaPaciente = (idPaciente: number): Promise<DeudaDetalle[]> =>
 // POST /api/pagos  → registrar pago con detalles por presupuesto
 export const registrarPago = (dto: PagoRequestDTO): Promise<Pago> =>
   api.post<Pago>('', dto).then((res) => res.data);
+
+// GET /api/pagos/reporte  → reporte de ingresos por rango de fechas
+export const getReporte = (desde: string, hasta: string): Promise<PagoReporte> =>
+  api.get<PagoReporte>('/reporte', { params: { desde, hasta } }).then((res) => res.data);

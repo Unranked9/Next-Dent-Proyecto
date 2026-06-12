@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import DashboardPage from './pages/DashboardPage';
 import PacientesPage from './pages/PacientesPage';
 import PacientePerfilPage from './pages/PacientePerfilPage';
 import CitasPage from './pages/CitasPage';
@@ -7,6 +8,7 @@ import DoctoresPage from './pages/DoctoresPage';
 import TratamientosPage from './pages/TratamientosPage';
 import PagosPage from './pages/PagosPage';
 import ConfiguracionPreciosPage from './pages/ConfiguracionPreciosPage';
+import ReportePage from './pages/ReportePage';
 
 function App() {
   return (
@@ -17,7 +19,7 @@ function App() {
       {/* Contenido principal con margen izquierdo igual al ancho del sidebar */}
       <main className="ml-52 min-h-screen bg-slate-100">
         <Routes>
-          <Route path="/" element={<Navigate to="/pacientes" replace />} />
+          <Route path="/" element={<DashboardPage />} />
           <Route path="/pacientes" element={<PacientesPage />} />
           <Route path="/pacientes/:id" element={<PacientePerfilPage />} />
           <Route path="/citas" element={<CitasPage />} />
@@ -25,6 +27,7 @@ function App() {
           <Route path="/tratamientos" element={<TratamientosPage />} />
           <Route path="/pagos" element={<PagosPage />} />
           <Route path="/tarifario" element={<ConfiguracionPreciosPage />} />
+          <Route path="/reporte" element={<ReportePage />} />
         </Routes>
       </main>
     </BrowserRouter>
