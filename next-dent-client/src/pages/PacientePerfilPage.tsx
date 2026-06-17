@@ -32,15 +32,17 @@ export default function PacientePerfilPage() {
   const [idCicloSeleccionado, setIdCicloSeleccionado] = useState<number | null>(null);
   const [isCreatingCiclo, setIsCreatingCiclo] = useState(false);
   const [showModalCiclo, setShowModalCiclo] = useState(false);
+  const [importarOdontograma, setImportarOdontograma] = useState(false);
 
   const confirmarNuevoCiclo = async () => {
     setIsCreatingCiclo(true);
     try {
-      const nuevoCiclo = await cicloService.iniciarNuevoCiclo(idPac);
+      const nuevoCiclo = await cicloService.iniciarNuevoCiclo(idPac, importarOdontograma);
       const data = await cicloService.getCiclosPorPaciente(idPac);
       setCiclos(data);
       setIdCicloSeleccionado(nuevoCiclo.idCiclo);
       setShowModalCiclo(false);
+      setImportarOdontograma(false);
       setTab('anamnesis');
     } catch (err) {
       console.error(err);
@@ -202,9 +204,11 @@ export default function PacientePerfilPage() {
                 idPaciente={idPac}
                 idCiclo={idCicloSeleccionado}
                 readOnly={odontogramaReadOnly}
+                paciente={paciente}
+                cicloFecha={ciclos.find(c => c.idCiclo === idCicloSeleccionado)?.fechaInicio}
               />
             )}
-            {tab === 'presupuestos' && <PresupuestosTab idPaciente={idPac} idCiclo={idCicloSeleccionado} />}
+            {tab === 'presupuestos' && <PresupuestosTab idPaciente={idPac} idCiclo={idCicloSeleccionado} paciente={paciente} />}
           </>
         ) : (
           tab !== 'info' && (
@@ -216,41 +220,120 @@ export default function PacientePerfilPage() {
       </div>
 
       {showModalCiclo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-lg font-bold text-slate-800">Iniciar Nuevo Ciclo Clínico</h3>
-              <button onClick={() => setShowModalCiclo(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl mx-4">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-              </button>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Nuevo Ciclo Clínico</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Se creará un nuevo historial independiente para este paciente
+                </p>
+              </div>
             </div>
 
-            <div className="px-6 py-5">
-              <p className="text-sm text-slate-600 leading-relaxed">
-                ¿Estás seguro de que deseas iniciar un nuevo ciclo clínico para este paciente? Esta acción registrará el estado actual de su salud dental y creará un lienzo financiero en blanco (nuevos presupuestos y evoluciones).
+            {/* Descripción */}
+            <p className="text-sm text-slate-600 mb-5 leading-relaxed">
+              El nuevo ciclo tendrá su propio odontograma, presupuesto y evoluciones clínicas.
+              ¿Cómo deseas iniciar el odontograma?
+            </p>
+
+            {/* Opciones */}
+            <div className="space-y-3 mb-6">
+
+              {/* Opción: En blanco */}
+              <label
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  !importarOdontograma
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="modoOdontograma"
+                  checked={!importarOdontograma}
+                  onChange={() => setImportarOdontograma(false)}
+                  className="mt-0.5 accent-indigo-600"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Odontograma en blanco
+                    <span className="ml-2 text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                      Recomendado
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    El doctor realiza un nuevo diagnóstico desde cero. Los ciclos anteriores
+                    quedan como historial de consulta.
+                  </p>
+                </div>
+              </label>
+
+              {/* Opción: Importar anterior */}
+              <label
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  importarOdontograma
+                    ? 'border-amber-500 bg-amber-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="modoOdontograma"
+                  checked={importarOdontograma}
+                  onChange={() => setImportarOdontograma(true)}
+                  className="mt-0.5 accent-amber-500"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Importar estado del ciclo anterior
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Copia el odontograma actual como punto de partida. Útil para tratamientos
+                    de larga duración que continúan en esta consulta.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {/* Aviso */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-5">
+              <p className="text-xs text-slate-500">
+                <span className="font-semibold text-slate-700">Anamnesis:</span>{' '}
+                siempre se importa del ciclo anterior como punto de partida, independiente
+                del odontograma.
               </p>
             </div>
 
-            <div className="px-6 pb-5 flex justify-end gap-3">
+            {/* Botones */}
+            <div className="flex items-center justify-end gap-3">
               <button
-                onClick={() => setShowModalCiclo(false)}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                onClick={() => { setShowModalCiclo(false); setImportarOdontograma(false); }}
+                disabled={isCreatingCiclo}
+                className="text-sm font-medium text-slate-600 hover:text-slate-800 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors disabled:opacity-40"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmarNuevoCiclo}
                 disabled={isCreatingCiclo}
-                className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer inline-flex items-center gap-2"
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm disabled:cursor-not-allowed"
               >
                 {isCreatingCiclo && (
-                  <div className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
                 )}
-                Aceptar
+                {isCreatingCiclo ? 'Creando...' : 'Crear ciclo'}
               </button>
             </div>
+
           </div>
         </div>
       )}

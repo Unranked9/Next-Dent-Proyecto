@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/odontogramas/multipieza")
-@CrossOrigin(origins = "*")
 public class OdontogramaMultipiezaController {
 
     @Autowired

@@ -6,6 +6,12 @@ import {
   deleteDoctor,
 } from '../services/doctorService';
 import type { Doctor } from '../types/doctor';
+import { CampoConError } from '../components/CampoConError';
+import {
+  type ErroresFormulario,
+  validarRequerido,
+  hayErrores,
+} from '../utils/validaciones';
 
 type FormData = Omit<Doctor, 'idDoc'>;
 
@@ -70,6 +76,7 @@ export default function DoctoresPage() {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [errores, setErrores] = useState<ErroresFormulario<FormData>>({});
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchDoctores = () =>
@@ -86,25 +93,38 @@ export default function DoctoresPage() {
   });
 
   const openCreate = () => {
-    setEditing(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true);
+    setEditing(null); setForm(EMPTY_FORM); setFormError(null); setErrores({}); setModalOpen(true);
   };
 
   const openEdit = (d: Doctor) => {
     setEditing(d);
     setForm({ nombre: d.nombre, apellido: d.apellido, especialidad: d.especialidad, cmp: d.cmp });
     setFormError(null);
+    setErrores({});
     setModalOpen(true);
   };
 
   const closeModal = () => {
-    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null);
+    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null); setErrores({});
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
+  function validarFormulario(): boolean {
+    const e: ErroresFormulario<FormData> = {
+      nombre: validarRequerido(form.nombre, 'Nombre'),
+      apellido: validarRequerido(form.apellido, 'Apellido'),
+      especialidad: validarRequerido(form.especialidad, 'Especialidad'),
+      cmp: validarRequerido(form.cmp, 'CMP'),
+    };
+    setErrores(e);
+    return !hayErrores(e);
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validarFormulario()) return;
     setSaving(true);
     setFormError(null);
     try {
@@ -301,23 +321,27 @@ export default function DoctoresPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 {([
-                  { name: 'nombre',      label: 'Nombre' },
-                  { name: 'apellido',    label: 'Apellido' },
+                  { name: 'nombre',       label: 'Nombre' },
+                  { name: 'apellido',     label: 'Apellido' },
                   { name: 'especialidad', label: 'Especialidad' },
-                  { name: 'cmp',         label: 'CMP' },
-                ] as const).map(({ name, label }) => (
-                  <div key={name} className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-slate-600">{label}</label>
-                    <input
-                      name={name}
-                      type="text"
-                      value={form[name]}
-                      onChange={handleChange}
-                      required
-                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
-                    />
-                  </div>
-                ))}
+                  { name: 'cmp',          label: 'CMP' },
+                ] as const).map(({ name, label }) => {
+                  const err = errores[name];
+                  return (
+                    <CampoConError key={name} error={err}>
+                      <label className="text-xs font-medium text-slate-600">{label}</label>
+                      <input
+                        name={name}
+                        type="text"
+                        value={form[name]}
+                        onChange={handleChange}
+                        className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 transition ${
+                          err ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                        }`}
+                      />
+                    </CampoConError>
+                  );
+                })}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

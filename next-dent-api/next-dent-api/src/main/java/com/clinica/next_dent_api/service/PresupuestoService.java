@@ -164,6 +164,7 @@ public class PresupuestoService {
         evolucion.setIdPaciente(idPaciente);
         evolucion.setDoctor(doctor);
         evolucion.setNumeroFdi(numeroFdi);
+        evolucion.setIdTarifa(detalle.getIdTarifa());
         evolucion.setFecha(LocalDate.now().toString());
         evolucion.setDescripcion(notaClinica);
         Evolucion evolucionGuardada = evolucionRepository.save(evolucion);

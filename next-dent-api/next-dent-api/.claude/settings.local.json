@@ -22,7 +22,8 @@
       "Bash(echo \"Servidor iniciando, PID: $!\")",
       "Bash(curl *)",
       "PowerShell(Get-Process *|)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(./mvnw.cmd -q compile)"
     ]
   }
 }

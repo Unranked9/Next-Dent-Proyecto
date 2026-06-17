@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCitas } from '../services/citaService';
-import { useDoctorActivo, getNombreCompleto } from '../hooks/useDoctorActivo';
+import { useAuth } from '../context/AuthContext';
 import { usePorCobrar } from '../hooks/usePorCobrar';
 import KpiBar from '../components/KpiBar';
 import type { Cita } from '../types/cita';
@@ -115,8 +115,9 @@ const SkeletonRow = () => (
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { doctor } = useDoctorActivo();
+  const { usuario } = useAuth();
   const { porCobrar, loading: loadingCobros } = usePorCobrar();
+  const nombreSaludo = usuario?.email ?? 'Doctor';
 
   const [citasHoy, setCitasHoy] = useState<Cita[]>([]);
   const [loadingCitas, setLoadingCitas] = useState(true);
@@ -142,7 +143,7 @@ export default function DashboardPage() {
         {/* ── Header bienvenida ─────────────────────────────────────────── */}
         <div>
           <h1 className="text-xl font-bold text-slate-800">
-            {getSaludo()}, {getNombreCompleto(doctor)}
+            {getSaludo()}, {nombreSaludo}
           </h1>
           <p className="text-sm text-slate-500 mt-0.5 capitalize">{getFechaLarga()}</p>
         </div>
@@ -247,7 +248,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => navigate('/pagos')}
+                        onClick={() => navigate(`/pagos?pacienteId=${paciente.idPac}`)}
                         className="text-xs font-medium text-indigo-600 hover:text-indigo-700 whitespace-nowrap flex-shrink-0 transition-colors"
                       >
                         Ir a caja →

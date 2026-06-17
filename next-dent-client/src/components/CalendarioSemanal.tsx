@@ -2,10 +2,19 @@ import { useMemo } from 'react';
 import type { Cita } from '../types/cita';
 import { getDiasDeSemana, citaEnDia, calcularPosicionBloque } from '../utils/fechas';
 
+interface DoctorLista {
+  idDoc: number;
+  nombre: string;
+  apellido: string;
+  especialidad?: string;
+}
+
 interface CalendarioSemanalProps {
   citas: Cita[];
   semanaOffset: number;
   onCitaClick: (cita: Cita) => void;
+  doctores: DoctorLista[];
+  filtroDoctorId: number | 'todos';
 }
 
 const HORAS = Array.from({ length: 13 }, (_, i) => i + 8); // 08 … 20
@@ -29,9 +38,14 @@ function getNombrePaciente(cita: Cita): string {
   return 'Paciente';
 }
 
-export default function CalendarioSemanal({ citas, semanaOffset, onCitaClick }: CalendarioSemanalProps) {
+export default function CalendarioSemanal({ citas, semanaOffset, onCitaClick, doctores, filtroDoctorId }: CalendarioSemanalProps) {
   const dias = useMemo(() => getDiasDeSemana(semanaOffset), [semanaOffset]);
   const hoy = new Date();
+
+  const citasFiltradas = useMemo(() => {
+    if (filtroDoctorId === 'todos') return citas;
+    return citas.filter((c) => c.idDoc === filtroDoctorId);
+  }, [citas, filtroDoctorId]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -80,7 +94,7 @@ export default function CalendarioSemanal({ citas, semanaOffset, onCitaClick }: 
 
           {/* Columnas de días */}
           {dias.map((dia, diaIdx) => {
-            const citasDelDia = citas.filter((c) => citaEnDia(c, dia));
+            const citasDelDia = citasFiltradas.filter((c) => citaEnDia(c, dia));
             const citasFuera = citasDelDia.filter((c) => c.hora && esFueraDeRango(c.hora));
             const citasDentro = citasDelDia.filter((c) => c.hora && !esFueraDeRango(c.hora));
 
@@ -103,6 +117,8 @@ export default function CalendarioSemanal({ citas, semanaOffset, onCitaClick }: 
                 {citasDentro.map((cita) => {
                   const { topPx, heightPx } = calcularPosicionBloque(cita.hora!, 30);
                   const clases = ESTADO_BLOQUE[cita.estado] ?? 'bg-slate-100 border-slate-300 text-slate-700';
+                  const doc = doctores.find((d) => d.idDoc === cita.idDoc);
+                  const nombreDoc = doc ? `Dr. ${doc.nombre} ${doc.apellido}` : null;
                   return (
                     <button
                       key={cita.idCita}
@@ -119,6 +135,11 @@ export default function CalendarioSemanal({ citas, semanaOffset, onCitaClick }: 
                           {cita.motivo.slice(0, 20)}
                         </p>
                       )}
+                      {nombreDoc && heightPx >= 44 && (
+                        <p className="text-[10px] leading-tight truncate opacity-60">
+                          {nombreDoc}
+                        </p>
+                      )}
                     </button>
                   );
                 })}
@@ -126,17 +147,25 @@ export default function CalendarioSemanal({ citas, semanaOffset, onCitaClick }: 
                 {/* Citas fuera del rango: al inicio del día con ⚠️ */}
                 {citasFuera.map((cita, i) => {
                   const clases = ESTADO_BLOQUE[cita.estado] ?? 'bg-slate-100 border-slate-300 text-slate-700';
+                  const heightPx = 28;
+                  const doc = doctores.find((d) => d.idDoc === cita.idDoc);
+                  const nombreDoc = doc ? `Dr. ${doc.nombre} ${doc.apellido}` : null;
                   return (
                     <button
                       key={cita.idCita}
                       onClick={() => onCitaClick(cita)}
                       title={`Fuera de horario — ${cita.hora?.slice(0, 5)} ${getNombrePaciente(cita)}`}
                       className={`absolute left-0.5 right-0.5 border-l-2 rounded text-left px-1 py-0.5 overflow-hidden cursor-pointer hover:brightness-95 transition-all z-20 ${clases}`}
-                      style={{ top: `${i * 30}px`, height: '28px' }}
+                      style={{ top: `${i * 30}px`, height: `${heightPx}px` }}
                     >
                       <p className="text-xs font-semibold truncate leading-tight">
                         ⚠️ {cita.hora!.slice(0, 5)} {getNombrePaciente(cita)}
                       </p>
+                      {nombreDoc && heightPx >= 44 && (
+                        <p className="text-[10px] leading-tight truncate opacity-60">
+                          {nombreDoc}
+                        </p>
+                      )}
                     </button>
                   );
                 })}

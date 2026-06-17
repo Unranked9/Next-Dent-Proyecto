@@ -26,7 +26,13 @@
       "PowerShell($lines = Get-Content \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\\\\src\\\\components\\\\Odontograma.tsx\" | Measure-Object -Line; $lines.Lines)",
       "Skill(run)",
       "PowerShell(cd \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\"; npx tsc --noEmit; Write-Host \"Exit code: $LASTEXITCODE\")",
-      "PowerShell(cd \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\"; npx tsc -p tsconfig.app.json --noEmit 2>&1 | Out-String; Write-Host \"Exit code: $LASTEXITCODE\")"
+      "PowerShell(cd \"C:\\\\Users\\\\ALEXIS\\\\Documents\\\\Next-Dent WorkSpace\\\\next-dent-client\"; npx tsc -p tsconfig.app.json --noEmit 2>&1 | Out-String; Write-Host \"Exit code: $LASTEXITCODE\")",
+      "Bash(node -e \"require\\('playwright'\\)\")",
+      "Bash(node -e \"require\\('puppeteer'\\)\")",
+      "Bash(curl *)",
+      "PowerShell(Get-Command *)",
+      "Bash(./mvnw compile *)",
+      "Bash(PGPASSWORD=postgres psql *)"
     ]
   }
 }

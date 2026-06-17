@@ -9,10 +9,89 @@ import type { Presupuesto, PresupuestoDetalle } from '../types/presupuesto';
 import type { Evolucion } from '../types/hce';
 import type { Doctor } from '../types/doctor';
 import type { Tarifario } from '../types/tarifario';
+import { obtenerMapeoMINSA } from '../utils/minsaMapper';
 
 interface PendienteItem extends PresupuestoDetalle {
   idPresupuesto: number;
   nombreTratamiento: string;
+}
+
+/**
+ * Mapea el nombre de un tratamiento del tarifario a la clave del minsaMapper.
+ * Usado al evolucionar para actualizar la sigla del odontograma correctamente.
+ */
+function inferirClaveOdontograma(nombreTratamiento: string): string {
+  const n = nombreTratamiento.toLowerCase();
+
+  // Coronas modernas — orden de especificidad descendente
+  if (n.includes('zirconio') && n.includes('porcelana'))  return 'CORONA_ZP';
+  if (n.includes('zirconio'))                              return 'CORONA_CZ';
+  if (n.includes('disilicato') || n.includes('e.max') || n.includes('emax')) return 'CORONA_ED';
+  if (n.includes('pfm') || (n.includes('porcelana') && n.includes('metal'))) return 'CORONA_PFM';
+  if (n.includes('peek'))                                  return 'CORONA_PEEK';
+  if (n.includes('pmma') || n.includes('provisional') && n.includes('cad')) return 'CORONA_PMMA';
+  if (n.includes('híbrida') || n.includes('hibrida') || n.includes('vita enamic') || n.includes('cerasmart')) return 'CORONA_HPC';
+  if (n.includes('oro') && (n.includes('corona') || n.includes('colad'))) return 'CORONA_AU';
+  if (n.includes('metal') && n.includes('cerámica') || n.includes('ceramica') && n.includes('metal')) return 'CORONA_CMP';
+  if (n.includes('corona') && n.includes('metál') || n.includes('corona') && n.includes('metal')) return 'CORONA_CM';
+  if (n.includes('corona') && n.includes('porcelana'))    return 'CORONA_CP';
+
+  // Inlays / Onlays / Overlays
+  if (n.includes('overlay'))                              return 'OVERLAY_CZ';
+  if (n.includes('onlay') && n.includes('zirconio'))      return 'ONLAY_CZ';
+  if (n.includes('inlay') && n.includes('zirconio'))      return 'INLAY_CZ';
+  if (n.includes('inlay') && n.includes('disilicato'))    return 'INLAY_ED';
+  if (n.includes('ceromero') || n.includes('cerómero'))   return 'INLAY_CER';
+  if (n.includes('inlay') && n.includes('oro'))           return 'INLAY_AU';
+
+  // Carillas
+  if (n.includes('carilla') || n.includes('veneer') || n.includes('chapa')) {
+    if (n.includes('disilicato') || n.includes('e.max') || n.includes('emax')) return 'CARILLA_ED';
+    if (n.includes('zirconio'))    return 'CARILLA_CZ';
+    if (n.includes('porcelana'))   return 'CARILLA_PC';
+    return 'CARILLA_COMP';
+  }
+
+  // Resinas
+  if (n.includes('nanohíbrida') || n.includes('nanohibrida')) return 'RESINA_NHB';
+  if (n.includes('bulk') && n.includes('fill'))               return 'RESINA_BLK';
+  if (n.includes('nanopartícula') || n.includes('nanoparticula') || n.includes('nanorrelleno')) return 'RESINA_NBF';
+  if (n.includes('fluida') || n.includes('flow'))             return 'RESINA_FLOW';
+  if (n.includes('resina') || n.includes('restaur'))          return 'RESINA_BUENO';
+
+  // Implantes
+  if (n.includes('implante') && n.includes('zirconio'))  return 'IMPLANTE_ZR';
+  if (n.includes('implante') && n.includes('mini'))      return 'IMPLANTE_MINI';
+  if (n.includes('implante'))                            return 'IMPLANTE_TI';
+
+  // Endodoncia / pulpar
+  if (n.includes('retratamiento'))                       return 'RETRATAMIENTO';
+  if (n.includes('apicectom') || n.includes('cirugía apical')) return 'CIRUGIA_APICAL';
+  if (n.includes('apexif'))                              return 'PULPAR_APEX';
+  if (n.includes('pulpotom'))                            return 'PULPAR_PD';
+  if (n.includes('pulpectom'))                           return 'PULPAR_PC';
+  if (n.includes('conducto') || n.includes('endodon'))   return 'ENDODONCIA';
+
+  // Periodoncia
+  if (n.includes('raspado') || n.includes('alisado'))    return 'PERIO_RAR';
+  if (n.includes('gingivect'))                           return 'PERIO_GIN';
+  if (n.includes('colgajo') || (n.includes('cirugía') && n.includes('periodon'))) return 'PERIO_CIR';
+
+  // Sellante
+  if (n.includes('sellante'))                            return 'SELLANTE';
+
+  // Blanqueamiento
+  if (n.includes('blanquea') || n.includes('blanqueo'))  return 'BLANQUEAMIENTO';
+
+  // Amalgama / Ionómero
+  if (n.includes('amalgama'))                            return 'AMALGAMA_BUENO';
+  if (n.includes('ionóm') || n.includes('ionomero') || n.includes('vidrio')) return 'IONOMERO_BUENO';
+
+  // Extracciones
+  if (n.includes('extracción') || n.includes('extraccion') || n.includes('exodoncia')) return 'EXTRACCION_INDICADA';
+
+  // Fallback genérico
+  return 'CORONA_CMP';
 }
 
 // ── Subcomponent: Toast ───────────────────────────────────────────────────────
@@ -191,6 +270,109 @@ function ModalEvolucion({
   );
 }
 
+// ── Helper: clasificar diente por número FDI ──────────────────────────────────
+
+interface TipoDiente {
+  tipo: 'incisivo' | 'canino' | 'premolar' | 'molar';
+  arcada: 'superior' | 'inferior';
+  label: string;
+}
+
+function getTipoDiente(fdi: number): TipoDiente | null {
+  if (!fdi || fdi <= 0) return null;
+
+  // Dentición adulta: cuadrantes 1-4 (11-48)
+  // Dentición pediátrica: cuadrantes 5-8 (51-85)
+  const cuadrante = Math.floor(fdi / 10);
+  const posicion = fdi % 10;
+
+  const esSuperior = [1, 2, 5, 6].includes(cuadrante);
+  const esInferior = [3, 4, 7, 8].includes(cuadrante);
+  if (!esSuperior && !esInferior) return null;
+
+  const arcada: 'superior' | 'inferior' = esSuperior ? 'superior' : 'inferior';
+
+  // Dentición adulta (cuadrantes 1-4)
+  if (cuadrante >= 1 && cuadrante <= 4) {
+    if (posicion === 1 || posicion === 2) {
+      return { tipo: 'incisivo', arcada, label: 'Incisivo' };
+    }
+    if (posicion === 3) {
+      return { tipo: 'canino', arcada, label: 'Canino' };
+    }
+    if (posicion === 4 || posicion === 5) {
+      return { tipo: 'premolar', arcada, label: 'Premolar' };
+    }
+    if (posicion >= 6 && posicion <= 8) {
+      return { tipo: 'molar', arcada, label: 'Molar' };
+    }
+  }
+
+  // Dentición pediátrica (cuadrantes 5-8)
+  if (cuadrante >= 5 && cuadrante <= 8) {
+    if (posicion === 1 || posicion === 2) {
+      return { tipo: 'incisivo', arcada, label: 'Incisivo deciduo' };
+    }
+    if (posicion === 3) {
+      return { tipo: 'canino', arcada, label: 'Canino deciduo' };
+    }
+    if (posicion === 4 || posicion === 5) {
+      return { tipo: 'molar', arcada, label: 'Molar deciduo' };
+    }
+  }
+
+  return null;
+}
+
+function IconoDiente({ fdi }: { fdi: number }) {
+  const info = getTipoDiente(fdi);
+  if (!info) return null;
+
+  // Colores según arcada
+  const color = info.arcada === 'superior' ? '#6366F1' : '#8B5CF6'; // indigo / violet
+
+  // Formas SVG simplificadas por tipo de diente
+  const shapes: Record<TipoDiente['tipo'], JSX.Element> = {
+    incisivo: (
+      // Diente rectangular con raíz simple — forma de pala
+      <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="1" width="12" height="9" rx="2" fill={color} opacity="0.15" stroke={color} strokeWidth="1.5"/>
+        <path d="M6 10 L5 19 M10 10 L11 19" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    canino: (
+      // Diente con punta prominente — forma de colmillo
+      <svg width="14" height="22" viewBox="0 0 14 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 2 Q7 1 12 2 Q13 6 7 10 Q1 6 2 2Z" fill={color} opacity="0.15" stroke={color} strokeWidth="1.5"/>
+        <path d="M7 10 L6 21" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    premolar: (
+      // Diente con dos cúspides — forma de M suavizada
+      <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 2 Q4 1 6 3 Q8 1 10 3 Q14 1 14 5 Q14 10 8 11 Q2 10 2 5Z" fill={color} opacity="0.15" stroke={color} strokeWidth="1.5"/>
+        <path d="M5 11 L4 19 M11 11 L12 19" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    molar: (
+      // Diente ancho con múltiples cúspides — forma cuadrada con protuberancias
+      <svg width="20" height="18" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 3 Q5 1 8 3 Q10 1 12 3 Q15 1 18 3 Q19 6 18 10 Q15 12 10 12 Q5 12 2 10 Q1 6 2 3Z" fill={color} opacity="0.15" stroke={color} strokeWidth="1.5"/>
+        <path d="M5 12 L4 17 M10 12 L10 17 M15 12 L16 17" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  };
+
+  return (
+    <span
+      title={`${info.label} ${info.arcada}`}
+      className="shrink-0 inline-flex items-center justify-center"
+    >
+      {shapes[info.tipo]}
+    </span>
+  );
+}
+
 // ── Subcomponent: Lista de Pendientes ─────────────────────────────────────────
 
 function PanelPendientes({
@@ -235,11 +417,16 @@ function PanelPendientes({
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   {item.numeroFdi > 0 && (
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      </svg>
-                      Pieza {item.numeroFdi}
+                    <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                      <IconoDiente fdi={item.numeroFdi} />
+                      <span className="font-medium">
+                        Pieza {item.numeroFdi}
+                        {getTipoDiente(item.numeroFdi) && (
+                          <span className="text-slate-400 font-normal">
+                            {' '}· {getTipoDiente(item.numeroFdi)!.label}
+                          </span>
+                        )}
+                      </span>
                     </span>
                   )}
                   <span className="text-xs font-mono text-slate-400">
@@ -266,7 +453,13 @@ function PanelPendientes({
 
 // ── Subcomponent: Historial Timeline ─────────────────────────────────────────
 
-function PanelHistorial({ evoluciones }: { evoluciones: Evolucion[] }) {
+function PanelHistorial({
+  evoluciones,
+  nombreDe,
+}: {
+  evoluciones: Evolucion[];
+  nombreDe: (idTarifa: number) => string;
+}) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
       <div className="bg-blue-600 px-5 py-3.5 flex items-center gap-3 shrink-0">
@@ -281,7 +474,7 @@ function PanelHistorial({ evoluciones }: { evoluciones: Evolucion[] }) {
         </span>
       </div>
 
-      <div className="overflow-y-auto" style={{ maxHeight: '460px' }}>
+      <div className="overflow-y-auto" style={{ maxHeight: '520px' }}>
         {evoluciones.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <svg className="w-9 h-9 text-slate-200 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -300,20 +493,23 @@ function PanelHistorial({ evoluciones }: { evoluciones: Evolucion[] }) {
                 <div key={ev.idEvolucion} className="relative flex gap-4 pl-10">
                   <div className="absolute left-[22px] top-5 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shadow-sm shrink-0" />
                   <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 hover:shadow-md transition-all duration-150 overflow-hidden">
-                    {/* Pieza destacada */}
-                    {ev.numeroFdi && ev.numeroFdi > 0 && (
-                      <div className="px-4 pt-3.5 pb-0">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
+                    {/* Header de la tarjeta: nombre del tratamiento + badge de pieza */}
+                    <div className="px-4 pt-3.5 pb-0 flex items-start justify-between gap-2 flex-wrap">
+                      <p className="text-xs font-bold text-slate-800 leading-tight">
+                        {ev.idTarifa ? nombreDe(ev.idTarifa) : 'Tratamiento no especificado'}
+                      </p>
+                      {ev.numeroFdi && ev.numeroFdi > 0 && (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg shrink-0">
                           <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                           </svg>
                           Pieza {ev.numeroFdi}
                         </span>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     {/* Nota clínica */}
-                    <div className="px-4 pt-3 pb-3">
-                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    <div className="px-4 pt-2 pb-3">
+                      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
                         {ev.descripcion || 'Sin nota clínica'}
                       </p>
                     </div>
@@ -443,11 +639,15 @@ export default function EvolucionesTab({ idPaciente, idCiclo }: { idPaciente: nu
      if (modalItem.numeroFdi > 0 && idOdontogramaActual) {
         const dienteTarget = dientesActual.find(d => d.numeroFdi === modalItem.numeroFdi);
         if (dienteTarget) {
+          const claveOdontograma = inferirClaveOdontograma(modalItem.nombreTratamiento);
+          const mapeoVisual = obtenerMapeoMINSA(claveOdontograma);
+
           await odontogramaService.guardarDiente({
             ...dienteTarget,
             idOdontograma: idOdontogramaActual,
             estadoClinico: 'REALIZADO',
-            colorRecuadro: 'AZUL'
+            condicionGeneral: claveOdontograma,   // ← actualiza la condición para el SVG
+            ...mapeoVisual,                        // ← siglaRecuadro, colorRecuadro, trazos
           });
         }
       }
@@ -509,12 +709,11 @@ export default function EvolucionesTab({ idPaciente, idCiclo }: { idPaciente: nu
         />
       )}
 
-      {/* ── Dashboard: 2 columnas ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[50%_50%] 2xl:grid-cols-[45%_55%] gap-8 w-full items-start">
+      {/* ── Dashboard: Odontograma arriba, paneles abajo ── */}
+      <div className="flex flex-col gap-4 w-full">
 
-        {/* Columna izquierda: Odontograma (≈40%) */}
-        {/* Columna izquierda: Odontograma */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[500px] overflow-x-auto custom-scrollbar">
+        {/* Zona 1: Odontograma — ancho completo */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="bg-slate-700 px-5 py-3.5 flex items-center gap-2">
             <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -535,10 +734,10 @@ export default function EvolucionesTab({ idPaciente, idCiclo }: { idPaciente: nu
           />
         </div>
 
-        {/* Columna derecha: Pendientes + Historial (≈60%) */}
-        <div className="flex flex-col gap-4">
+        {/* Zona 2: Pendientes + Historial — 2 columnas */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <PanelPendientes pendientes={pendientes} onEvolucionar={abrirModal} />
-          <PanelHistorial evoluciones={evoluciones} />
+          <PanelHistorial evoluciones={evoluciones} nombreDe={nombreDe} />
         </div>
       </div>
     </div>

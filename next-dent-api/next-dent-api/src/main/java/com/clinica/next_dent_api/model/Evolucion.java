@@ -27,6 +27,9 @@ public class Evolucion {
     @Column(name = "numero_fdi")
     private Integer numeroFdi;
 
+    @Column(name = "id_tarifa")
+    private Integer idTarifa;
+
     private String fecha;
 
     @Column(columnDefinition = "TEXT")

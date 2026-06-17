@@ -19,4 +19,5 @@ export interface PagoDetalle {
   idPagoDetalle?: number;
   idPresupuestoDetalle: number;
   montoAplicado: number;
+  concepto?: string;
 }

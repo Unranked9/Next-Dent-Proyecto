@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getPacientes } from '../services/pacienteService';
 import { getDeudaPaciente, getHistorialPaciente, registrarPago } from '../services/pagoService';
 import { getActivos as getTarifario } from '../services/tarifarioService';
@@ -60,6 +61,7 @@ export default function PagosPage() {
   // Cobros pendientes
   const { porCobrar, total: totalPorCobrar, loading: loadingPorCobrar, refresh: refreshPorCobrar } = usePorCobrar();
   const busquedaRef = useRef<HTMLDivElement>(null);
+  const [searchParams] = useSearchParams();
 
   // Datos maestros
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -140,6 +142,20 @@ export default function PagosPage() {
     }
   };
 
+  // ── Pre-seleccionar paciente desde URL (?pacienteId=) ─────────────────────
+  useEffect(() => {
+    if (loadingInit) return;
+    const idParam = searchParams.get('pacienteId');
+    if (!idParam) return;
+    const id = Number(idParam);
+    if (isNaN(id)) return;
+    const paciente = pacientes.find((p) => p.idPac === id);
+    if (paciente && !pacienteActivo) {
+      seleccionarPaciente(paciente);
+    }
+  }, [loadingInit, pacientes, searchParams]);
+  // pacienteActivo NO va en las deps para no re-disparar al seleccionar
+
   const limpiarPaciente = () => {
     setPacienteActivo(null);
     setBusqueda('');
@@ -186,9 +202,13 @@ export default function PagosPage() {
         const v = parseFloat(l.montoInput);
         if (isNaN(v) || v <= 0) return null;
         const montoAbonar = Math.min(v, Number(l.detalle.saldoPendiente));
-        return { idPresupuestoDetalle: l.detalle.idDetalle, montoAbonar };
+        return {
+          idPresupuestoDetalle: l.detalle.idDetalle,
+          montoAbonar,
+          concepto: l.nombreTratamiento,
+        };
       })
-      .filter((x): x is { idPresupuestoDetalle: number; montoAbonar: number } => x !== null);
+      .filter((x): x is { idPresupuestoDetalle: number; montoAbonar: number; concepto: string } => x !== null);
 
     if (!detallesAbonar.length) return;
 
@@ -519,6 +539,7 @@ export default function PagosPage() {
                       <tr className="border-b border-slate-100 bg-slate-50/40">
                         <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">#</th>
                         <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Monto</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Concepto</th>
                         <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Medio</th>
                         <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha</th>
                       </tr>
@@ -529,6 +550,19 @@ export default function PagosPage() {
                           <td className="px-5 py-3 text-xs text-slate-400 font-mono">{p.idPago}</td>
                           <td className="px-5 py-3 text-right font-mono font-semibold text-slate-900 whitespace-nowrap">
                             {fmt(Number(p.montoTotal))}
+                          </td>
+                          <td className="px-5 py-3 text-xs text-slate-700 max-w-[200px]">
+                            {p.detalles && p.detalles.length > 0 ? (
+                              <div className="flex flex-col gap-0.5">
+                                {p.detalles.map((d, di) => (
+                                  <span key={di} className="truncate block" title={d.concepto}>
+                                    {d.concepto ?? '—'}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </td>
                           <td className="px-5 py-3 text-xs text-slate-600">{p.medioPago}</td>
                           <td className="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">{fmtFecha(p.fechaPago)}</td>

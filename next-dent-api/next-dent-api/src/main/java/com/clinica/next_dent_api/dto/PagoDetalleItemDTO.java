@@ -8,4 +8,5 @@ import java.math.BigDecimal;
 public class PagoDetalleItemDTO {
     private Integer idPresupuestoDetalle;
     private BigDecimal montoAbonar;
+    private String concepto;
 }

@@ -1,15 +1,46 @@
 import { useEffect, useState } from 'react';
 import { getActivos, crear, actualizar, eliminar } from '../services/tarifarioService';
 import type { Tarifario } from '../types/tarifario';
+import { CampoConError } from '../components/CampoConError';
+import {
+  type ErroresFormulario,
+  validarRequerido,
+  validarMonto,
+  hayErrores,
+} from '../utils/validaciones';
 
 const CATEGORIAS = [
-  'Operatoria',
-  'Cirugía',
-  'Endodoncia',
-  'Rehabilitación',
-  'Ortodoncia',
-  'Odontopediatría',
+  'OPERATORIA',
+  'CIRUGÍA',
+  'ENDODONCIA',
+  'REHABILITACIÓN',
+  'ESTÉTICA',
+  'ORTODONCIA',
+  'DIAGNÓSTICO',
+  'PREVENCIÓN',
+  'PERIODONCIA',
+  'ODONTOPEDIATRÍA',
 ];
+
+const PREFIJO_CATEGORIA: Record<string, string> = {
+  'OPERATORIA':      'OPE',
+  'CIRUGÍA':         'CIR',
+  'ENDODONCIA':      'END',
+  'REHABILITACIÓN':  'REH',
+  'ESTÉTICA':        'EST',
+  'ORTODONCIA':      'ORT',
+  'DIAGNÓSTICO':     'DIA',
+  'PREVENCIÓN':      'PRE',
+  'PERIODONCIA':     'PER',
+  'ODONTOPEDIATRÍA': 'PED',
+};
+
+function generarCodigo(categoria: string, tarifasExistentes: Tarifario[]): string {
+  const prefijo = PREFIJO_CATEGORIA[categoria] ?? categoria.substring(0, 3).toUpperCase();
+  const count = tarifasExistentes.filter((t) => t.categoria === categoria).length;
+  const numero = String(count + 1).padStart(2, '0');
+  return `${prefijo}-${numero}`;
+}
 
 type FormData = Omit<Tarifario, 'idTarifa' | 'estado'>;
 
@@ -68,6 +99,7 @@ export default function ConfiguracionPreciosPage() {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [errores, setErrores] = useState<ErroresFormulario<FormData>>({});
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchTarifas = () =>
@@ -83,47 +115,62 @@ export default function ConfiguracionPreciosPage() {
   );
 
   const openCreate = () => {
-    setEditing(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true);
+    const categoriaInicial = CATEGORIAS[0];
+    const codigoGenerado = generarCodigo(categoriaInicial, tarifas);
+    setEditing(null);
+    setForm({ ...EMPTY_FORM, categoria: categoriaInicial, codigo: codigoGenerado });
+    setFormError(null);
+    setErrores({});
+    setModalOpen(true);
   };
 
   const openEdit = (t: Tarifario) => {
     setEditing(t);
     setForm({ codigo: t.codigo, nombre: t.nombre, categoria: t.categoria, precio: t.precio });
     setFormError(null);
+    setErrores({});
     setModalOpen(true);
   };
 
   const closeModal = () => {
-    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null);
+    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null); setErrores({});
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+
+    if (name === 'categoria' && !editing) {
+      const nuevoCodigo = generarCodigo(value, tarifas);
+      setForm((prev) => ({
+        ...prev,
+        categoria: value,
+        codigo: nuevoCodigo,
+      }));
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
       [name]: name === 'precio' ? parseFloat(value) || 0 : value,
     }));
   };
 
+  function validarFormulario(): boolean {
+    const e: ErroresFormulario<FormData> = {
+      codigo: validarRequerido(form.codigo, 'Código'),
+      nombre: validarRequerido(form.nombre, 'Nombre del tratamiento'),
+      precio: validarMonto(form.precio),
+    };
+    setErrores(e);
+    return !hayErrores(e);
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validarFormulario()) return;
     setFormError(null);
-
-    if (!form.codigo.trim()) {
-      setFormError('El código es obligatorio.');
-      return;
-    }
-    if (!form.nombre.trim()) {
-      setFormError('El nombre del tratamiento es obligatorio.');
-      return;
-    }
-    if (form.precio <= 0) {
-      setFormError('El precio debe ser mayor a S/ 0.00.');
-      return;
-    }
-
     setSaving(true);
     try {
       if (editing && editing.idTarifa !== undefined) {
@@ -356,19 +403,27 @@ export default function ConfiguracionPreciosPage() {
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-slate-600">Código</label>
+                <CampoConError error={errores.codigo}>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium text-slate-600">Código</label>
+                    {!editing && (
+                      <span className="text-[10px] text-indigo-500 font-medium bg-indigo-50 px-1.5 py-0.5 rounded">
+                        Autogenerado · editable
+                      </span>
+                    )}
+                  </div>
                   <input
                     name="codigo"
                     type="text"
                     value={form.codigo}
                     onChange={handleChange}
-                    placeholder="Ej: OP-001"
-                    required
-                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
+                    placeholder="Ej: OPE-05"
+                    className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 placeholder-slate-400 transition font-mono ${
+                      errores.codigo ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                    }`}
                   />
-                </div>
-                <div className="flex flex-col gap-1">
+                </CampoConError>
+                <CampoConError error={errores.precio}>
                   <label className="text-xs font-medium text-slate-600">Precio (S/)</label>
                   <input
                     name="precio"
@@ -378,13 +433,14 @@ export default function ConfiguracionPreciosPage() {
                     value={form.precio === 0 ? '' : form.precio}
                     onChange={handleChange}
                     placeholder="0.00"
-                    required
-                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
+                    className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 placeholder-slate-400 transition ${
+                      errores.precio ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                    }`}
                   />
-                </div>
+                </CampoConError>
               </div>
 
-              <div className="flex flex-col gap-1">
+              <CampoConError error={errores.nombre}>
                 <label className="text-xs font-medium text-slate-600">Nombre del tratamiento</label>
                 <input
                   name="nombre"
@@ -392,10 +448,11 @@ export default function ConfiguracionPreciosPage() {
                   value={form.nombre}
                   onChange={handleChange}
                   placeholder="Ej: Extracción simple"
-                  required
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-slate-400 transition"
+                  className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 placeholder-slate-400 transition ${
+                    errores.nombre ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                  }`}
                 />
-              </div>
+              </CampoConError>
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-slate-600">Categoría</label>

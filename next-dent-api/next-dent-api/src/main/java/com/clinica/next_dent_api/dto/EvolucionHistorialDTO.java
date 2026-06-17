@@ -14,4 +14,5 @@ public class EvolucionHistorialDTO {
     private String descripcion;
     private String nombreDoctor;
     private Integer numeroFdi;
+    private Integer idTarifa;
 }

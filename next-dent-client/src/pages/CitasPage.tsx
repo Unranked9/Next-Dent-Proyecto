@@ -1,12 +1,16 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getCitas, createCita, updateCita, deleteCita } from '../services/citaService';
-import axios from 'axios';
+import axiosInstance from '../config/axiosInstance';
 import type { Cita, CitaPayload } from '../types/cita';
 import CalendarioSemanal from '../components/CalendarioSemanal';
 import { getDiasDeSemana, formatRangoSemana } from '../utils/fechas';
-
-const BASE_URL = 'http://localhost:8080/api';
+import { CampoConError } from '../components/CampoConError';
+import {
+  type ErroresFormulario,
+  validarFechaFutura,
+  hayErrores,
+} from '../utils/validaciones';
 
 interface PacienteLista {
   idPac: number;
@@ -111,10 +115,12 @@ export default function CitasPage() {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [errores, setErrores] = useState<ErroresFormulario<FormData>>({});
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [vistaCalendario, setVistaCalendario] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
+  const [filtroDoctorId, setFiltroDoctorId] = useState<number | 'todos'>('todos');
 
   const diasSemana = useMemo(() => getDiasDeSemana(semanaOffset), [semanaOffset]);
   const rangoSemana = useMemo(() => formatRangoSemana(diasSemana), [diasSemana]);
@@ -130,8 +136,8 @@ export default function CitasPage() {
     const load = async () => {
       const [resCitas, resPacientes, resDoctores] = await Promise.allSettled([
         getCitas(),
-        axios.get<PacienteLista[]>(`${BASE_URL}/pacientes`),
-        axios.get<DoctorLista[]>(`${BASE_URL}/doctores`),
+        axiosInstance.get<PacienteLista[]>('/pacientes'),
+        axiosInstance.get<DoctorLista[]>('/doctores'),
       ]);
       if (resCitas.status === 'fulfilled') setCitas(resCitas.value);
       else setError('No se pudieron cargar las citas. Verifica que el servidor esté activo.');
@@ -170,6 +176,7 @@ export default function CitasPage() {
     setEditing(null);
     setForm({ ...EMPTY_FORM, idDoc: doctores.length === 1 ? doctores[0].idDoc : '' });
     setFormError(null);
+    setErrores({});
     setModalOpen(true);
   };
 
@@ -185,11 +192,12 @@ export default function CitasPage() {
       notas: c.notas ?? '',
     });
     setFormError(null);
+    setErrores({});
     setModalOpen(true);
   };
 
   const closeModal = () => {
-    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null);
+    setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null); setErrores({});
   };
 
   const handleChange = (
@@ -197,12 +205,22 @@ export default function CitasPage() {
   ) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   // ── Submit ─────────────────────────────────────────────────────────────────
+  function validarFormulario(): boolean {
+    const e: ErroresFormulario<FormData> = {
+      pacienteId: form.pacienteId === '' ? 'Selecciona un paciente.' : undefined,
+      idDoc: form.idDoc === '' ? 'Selecciona un doctor.' : undefined,
+      fecha: validarFechaFutura(`${form.fecha}T${form.hora}`),
+      motivo: !form.motivo.trim()
+        ? 'Motivo es obligatorio.'
+        : form.motivo.trim().length < 5 ? 'El motivo debe tener al menos 5 caracteres.' : undefined,
+    };
+    setErrores(e);
+    return !hayErrores(e);
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.pacienteId === '' || form.idDoc === '') {
-      setFormError('Selecciona paciente y doctor.');
-      return;
-    }
+    if (!validarFormulario()) return;
     const payload: CitaPayload = {
       paciente: { idPac: Number(form.pacienteId) },
       idDoc: Number(form.idDoc),
@@ -315,6 +333,21 @@ export default function CitasPage() {
               Anterior
             </button>
             <span className="text-sm font-semibold text-slate-700">{rangoSemana}</span>
+
+            {/* Selector de doctor */}
+            <select
+              value={filtroDoctorId}
+              onChange={(e) => setFiltroDoctorId(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white text-slate-700"
+            >
+              <option value="todos">Todos los doctores</option>
+              {doctores.map((d) => (
+                <option key={d.idDoc} value={d.idDoc}>
+                  Dr. {d.nombre} {d.apellido}
+                </option>
+              ))}
+            </select>
+
             <button
               onClick={() => setSemanaOffset((o) => o + 1)}
               className="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
@@ -343,6 +376,8 @@ export default function CitasPage() {
             citas={citas}
             semanaOffset={semanaOffset}
             onCitaClick={openEdit}
+            doctores={doctores}
+            filtroDoctorId={filtroDoctorId}
           />
         )}
 
@@ -510,14 +545,15 @@ export default function CitasPage() {
               )}
 
               {/* Paciente */}
-              <div className="flex flex-col gap-1">
+              <CampoConError error={errores.pacienteId}>
                 <label className="text-xs font-medium text-slate-600">Paciente</label>
                 <select
                   name="pacienteId"
                   value={form.pacienteId}
                   onChange={handleChange}
-                  required
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white text-slate-700"
+                  className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white text-slate-700 ${
+                    errores.pacienteId ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                  }`}
                 >
                   <option value="">Seleccionar paciente...</option>
                   {pacientes.map((p) => (
@@ -526,17 +562,18 @@ export default function CitasPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </CampoConError>
 
               {/* Doctor */}
-              <div className="flex flex-col gap-1">
+              <CampoConError error={errores.idDoc}>
                 <label className="text-xs font-medium text-slate-600">Doctor</label>
                 <select
                   name="idDoc"
                   value={form.idDoc}
                   onChange={handleChange}
-                  required
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white text-slate-700"
+                  className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white text-slate-700 ${
+                    errores.idDoc ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                  }`}
                 >
                   <option value="">Seleccionar doctor...</option>
                   {doctores.map((d) => (
@@ -545,21 +582,22 @@ export default function CitasPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </CampoConError>
 
               {/* Fecha + Hora */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
+                <CampoConError error={errores.fecha}>
                   <label className="text-xs font-medium text-slate-600">Fecha</label>
                   <input
                     name="fecha"
                     type="date"
                     value={form.fecha}
                     onChange={handleChange}
-                    required
-                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                      errores.fecha ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                    }`}
                   />
-                </div>
+                </CampoConError>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-slate-600">Hora</label>
                   <input
@@ -574,7 +612,7 @@ export default function CitasPage() {
               </div>
 
               {/* Motivo */}
-              <div className="flex flex-col gap-1">
+              <CampoConError error={errores.motivo}>
                 <label className="text-xs font-medium text-slate-600">Motivo de consulta</label>
                 <textarea
                   name="motivo"
@@ -582,9 +620,11 @@ export default function CitasPage() {
                   onChange={handleChange}
                   placeholder="Ej: Dolor molar, limpieza, revisión..."
                   rows={2}
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none placeholder-slate-400"
+                  className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-none placeholder-slate-400 ${
+                    errores.motivo ? 'border-red-400 focus:ring-red-400/40' : 'border-slate-200 focus:ring-indigo-300'
+                  }`}
                 />
-              </div>
+              </CampoConError>
 
               {/* Estado */}
               <div className="flex flex-col gap-1">

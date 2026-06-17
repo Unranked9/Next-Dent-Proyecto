@@ -11,7 +11,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pacientes")
-@CrossOrigin(origins = "*") // Permite que nuestro futuro frontend en React consuma esta API
 public class PacienteController {
 
     @Autowired

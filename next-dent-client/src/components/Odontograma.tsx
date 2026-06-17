@@ -148,36 +148,113 @@ const GRUPOS_CARA: GrupoDiagnostico[] = [
 
 const GRUPOS_PIEZA: GrupoDiagnostico[] = [
   {
-    titulo: 'Estado General / Cirugía',
+    titulo: 'Ausencias y Extracciones',
     abiertoPorDefecto: true,
     items: [
-      { label: 'Ausente',          value: 'AUSENTE',       color: 'blue' },
-      { label: 'Extracción Ind.',  value: 'EXTRACCION',    color: 'red'  },
-      { label: 'Remanente Rad.',   value: 'REMANENTE_RAD', color: 'red'  },
+      { label: 'Ausente / Extraído',      value: 'AUSENTE',             color: 'blue' },
+      { label: 'Extracción Indicada',     value: 'EXTRACCION_INDICADA', color: 'red'  },
+      { label: 'Remanente Radicular',     value: 'REMANENTE_RAD',       color: 'red'  },
     ],
   },
   {
-    titulo: 'Pulpar y Coronas',
+    titulo: 'Coronas Tradicionales',
     abiertoPorDefecto: true,
     items: [
-      { label: 'Endodoncia Ind.',   value: 'ENDODONCIA_IND', color: 'red'  },
-      { label: 'Endodoncia (TC)',   value: 'ENDODONCIA',     color: 'blue' },
-      { label: 'Pulpotomía (PP)',   value: 'PULPAR_PP',      color: 'blue' },
-      { label: 'Corona Metálica',  value: 'CORONA_CM',      color: 'blue' },
-      { label: 'Corona Porcelana', value: 'CORONA_CP',      color: 'blue' },
-      { label: 'Corona Metal-Porc.',value: 'CORONA_CMP',    color: 'blue' },
-      { label: 'Corona Defect./Temp',value: 'CORONA_TEMP',  color: 'red'  },
-      { label: 'Implante Ind.',    value: 'IMPLANTE_IND',   color: 'red'  },
-      { label: 'Implante',         value: 'IMPLANTE',       color: 'blue' },
+      { label: 'Metal-Cerámica (CMC)',    value: 'CORONA_CMP',          color: 'blue' },
+      { label: 'Metálica (CM)',           value: 'CORONA_CM',           color: 'blue' },
+      { label: 'Porcelana Pura (CP)',     value: 'CORONA_CP',           color: 'blue' },
+      { label: 'Corona Defect./Temp.',    value: 'CORONA_TEMP',         color: 'red'  },
     ],
   },
   {
-    titulo: 'Periodoncia (Movilidad)',
+    titulo: 'Coronas Estéticas Modernas',
+    abiertoPorDefecto: true,
+    items: [
+      { label: 'Zirconio Monolítico (CZ)',    value: 'CORONA_CZ',   color: 'blue' },
+      { label: 'Disilicato e.max (ED)',        value: 'CORONA_ED',   color: 'blue' },
+      { label: 'Zirconio + Porcelana (ZP)',    value: 'CORONA_ZP',   color: 'blue' },
+      { label: 'Porcelana Metal (PFM)',        value: 'CORONA_PFM',  color: 'blue' },
+      { label: 'Híbrida Polímero-Cer. (HPC)', value: 'CORONA_HPC',  color: 'blue' },
+      { label: 'PEEK (PK)',                    value: 'CORONA_PEEK', color: 'blue' },
+      { label: 'Provisional CAD-CAM (PM)',     value: 'CORONA_PMMA', color: 'blue' },
+      { label: 'Oro Colado (AU)',              value: 'CORONA_AU',   color: 'blue' },
+      { label: 'Corona CZ/ED — Mal Estado',   value: 'CORONA_CZ_MAL', color: 'red' },
+      { label: 'Corona PFM — Mal Estado',     value: 'CORONA_PFM_MAL', color: 'red' },
+    ],
+  },
+  {
+    titulo: 'Inlays / Onlays / Overlays',
     abiertoPorDefecto: false,
     items: [
-      { label: 'Movilidad M1', value: 'MOVILIDAD_M1', color: 'blue' },
-      { label: 'Movilidad M2', value: 'MOVILIDAD_M2', color: 'blue' },
-      { label: 'Movilidad M3', value: 'MOVILIDAD_M3', color: 'blue' },
+      { label: 'Inlay Zirconio (ICZ)',     value: 'INLAY_CZ',    color: 'blue' },
+      { label: 'Inlay Disilicato (IED)',   value: 'INLAY_ED',    color: 'blue' },
+      { label: 'Incrustación Ceromero',    value: 'INLAY_CER',   color: 'blue' },
+      { label: 'Inlay Oro (IAU)',          value: 'INLAY_AU',    color: 'blue' },
+      { label: 'Onlay Zirconio (OCZ)',     value: 'ONLAY_CZ',    color: 'blue' },
+      { label: 'Overlay (OVL)',            value: 'OVERLAY_CZ',  color: 'blue' },
+    ],
+  },
+  {
+    titulo: 'Carillas / Veneers',
+    abiertoPorDefecto: false,
+    items: [
+      { label: 'Carilla Disilicato (VED)', value: 'CARILLA_ED',   color: 'blue' },
+      { label: 'Carilla Zirconio (VCZ)',   value: 'CARILLA_CZ',   color: 'blue' },
+      { label: 'Carilla Porcelana (VPC)',  value: 'CARILLA_PC',   color: 'blue' },
+      { label: 'Carilla Resina (VR)',      value: 'CARILLA_COMP', color: 'blue' },
+    ],
+  },
+  {
+    titulo: 'Restauraciones de Resina',
+    abiertoPorDefecto: false,
+    items: [
+      { label: 'Resina Compuesta (R)',     value: 'RESINA_BUENO', color: 'blue' },
+      { label: 'Resina Nanohíbrida (NH)',  value: 'RESINA_NHB',   color: 'blue' },
+      { label: 'Resina Bulk-Fill (BF)',    value: 'RESINA_BLK',   color: 'blue' },
+      { label: 'Resina Nanorrelleno (NF)', value: 'RESINA_NBF',   color: 'blue' },
+      { label: 'Resina Fluida (RF)',       value: 'RESINA_FLOW',  color: 'blue' },
+      { label: 'Amalgama (AM)',            value: 'AMALGAMA_BUENO', color: 'blue' },
+      { label: 'Ionómero (IV)',            value: 'IONOMERO_BUENO', color: 'blue' },
+      { label: 'Sellante (SE)',            value: 'SELLANTE',     color: 'blue' },
+      { label: 'Sellante Defectuoso',      value: 'SELLANTE_DEF', color: 'red'  },
+    ],
+  },
+  {
+    titulo: 'Implantes',
+    abiertoPorDefecto: false,
+    items: [
+      { label: 'Implante Titanio CI (ITI)',  value: 'IMPLANTE_TI',     color: 'blue' },
+      { label: 'Implante Titanio CE (ITE)',  value: 'IMPLANTE_TE',     color: 'blue' },
+      { label: 'Implante Zirconio (IZR)',    value: 'IMPLANTE_ZR',     color: 'blue' },
+      { label: 'Mini-Implante (IMN)',        value: 'IMPLANTE_MINI',   color: 'blue' },
+      { label: 'Implante Ti Indicado',       value: 'IMPLANTE_TI_IND', color: 'red'  },
+      { label: 'Implante ZR Indicado',       value: 'IMPLANTE_ZR_IND', color: 'red'  },
+    ],
+  },
+  {
+    titulo: 'Endodoncia y Cirugía Radicular',
+    abiertoPorDefecto: false,
+    items: [
+      { label: 'Tratamiento de Conductos',   value: 'ENDODONCIA',      color: 'blue' },
+      { label: 'Endodoncia Indicada',        value: 'ENDODONCIA_IND',  color: 'red'  },
+      { label: 'Pulpotomía Decidua (PD)',    value: 'PULPAR_PD',       color: 'blue' },
+      { label: 'Apexificación (APX)',        value: 'PULPAR_APEX',     color: 'blue' },
+      { label: 'Retratamiento (RT)',         value: 'RETRATAMIENTO',   color: 'blue' },
+      { label: 'Cirugía Apical (CA)',        value: 'CIRUGIA_APICAL',  color: 'blue' },
+      { label: 'Pulpectomía (PC)',           value: 'PULPAR_PC',       color: 'blue' },
+      { label: 'Protección Pulpar (PP)',     value: 'PULPAR_PP',       color: 'blue' },
+    ],
+  },
+  {
+    titulo: 'Periodoncia',
+    abiertoPorDefecto: false,
+    items: [
+      { label: 'Raspado y Alisado (RAR)',  value: 'PERIO_RAR', color: 'blue' },
+      { label: 'Gingivectomía (GIN)',      value: 'PERIO_GIN', color: 'blue' },
+      { label: 'Cirugía Periodontal (CIR)',value: 'PERIO_CIR', color: 'blue' },
+      { label: 'Movilidad G1',             value: 'MOVILIDAD_M1', color: 'red'  },
+      { label: 'Movilidad G2',             value: 'MOVILIDAD_M2', color: 'red'  },
+      { label: 'Movilidad G3',             value: 'MOVILIDAD_M3', color: 'red'  },
     ],
   },
   {
@@ -191,16 +268,17 @@ const GRUPOS_PIEZA: GrupoDiagnostico[] = [
     ],
   },
   {
-    titulo: 'Anomalías de Forma',
+    titulo: 'Anomalías y Otros',
     abiertoPorDefecto: false,
     items: [
-      { label: 'Macrodoncia',      value: 'MACRODONCIA',     color: 'blue' },
-      { label: 'Microdoncia',      value: 'MICRODONCIA',     color: 'blue' },
-      { label: 'Discromía',        value: 'DISCROMICO',      color: 'blue' },
-      { label: 'Ectópico',         value: 'ECTOPICO',        color: 'blue' },
-      { label: 'Clavija',          value: 'CLAVIJA',         color: 'blue' },
-      { label: 'Impactación',      value: 'IMPACTACION',     color: 'blue' },
-      { label: 'Semi-impactación', value: 'SEMI_IMPACTACION',color: 'blue' },
+      { label: 'Blanqueamiento (BL)',     value: 'BLANQUEAMIENTO',   color: 'blue' },
+      { label: 'Macrodoncia',             value: 'MACRODONCIA',      color: 'blue' },
+      { label: 'Microdoncia',             value: 'MICRODONCIA',      color: 'blue' },
+      { label: 'Discromía',               value: 'DISCROMICO',       color: 'blue' },
+      { label: 'Ectópico',                value: 'ECTOPICO',         color: 'blue' },
+      { label: 'Clavija',                 value: 'CLAVIJA',          color: 'blue' },
+      { label: 'Impactación',             value: 'IMPACTACION',      color: 'blue' },
+      { label: 'Semi-impactación',        value: 'SEMI_IMPACTACION', color: 'blue' },
     ],
   },
 ];
@@ -814,9 +892,12 @@ export default function Odontograma({
       <div className="flex gap-6 items-start">
 
        {/* LEFT — tooth map */}
-        <div className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden pr-2 pb-4 custom-scrollbar">
-          <div id="mapa-dientes-container" className="relative w-max min-w-[650px] mx-auto space-y-0.5 px-2">
-            
+        <div className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden custom-scrollbar">
+          <div
+            id="mapa-dientes-container"
+            className="relative w-max min-w-[650px] mx-auto space-y-0.5 px-2"
+          >
+
             <div className="flex justify-between px-10 mb-0.5">
               <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wide">Der.</span>
               <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wide">Izq.</span>

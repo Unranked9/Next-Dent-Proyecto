@@ -110,6 +110,7 @@ public class PagoService {
             pagoDetalle.setPago(pagoGuardado);
             pagoDetalle.setIdPresupuestoDetalle(item.getIdPresupuestoDetalle());
             pagoDetalle.setMontoAplicado(item.getMontoAbonar());
+            pagoDetalle.setConcepto(item.getConcepto());
             pagoDetalleRepository.save(pagoDetalle);
 
             BigDecimal nuevoSaldo = saldoActual.subtract(item.getMontoAbonar());

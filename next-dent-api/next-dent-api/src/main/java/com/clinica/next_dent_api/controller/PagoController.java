@@ -16,7 +16,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pagos")
-@CrossOrigin(origins = "*")   // ← mismo patrón que CitaController
 @RequiredArgsConstructor
 public class PagoController {
 

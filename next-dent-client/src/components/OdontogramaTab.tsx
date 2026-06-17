@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import Odontograma from './Odontograma';
 import * as odontogramaService from '../services/odontogramaService';
 import type { DienteEstado, OdontogramaMultipieza } from '../types/odontograma';
+import type { Paciente } from '../types/paciente';
+import { exportarFichaPdf } from '../utils/exportarFichaPdf';
+import * as presupuestoService from '../services/presupuestoService';
+import * as evolucionService from '../services/evolucionService';
+import * as tarifarioService from '../services/tarifarioService';
+import { getAnamnesisPorCiclo } from '../services/anamnesisService';
+import { useAuth } from '../context/AuthContext';
+import * as doctorService from '../services/doctorService';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -61,9 +69,14 @@ interface OdontogramaTabProps {
   idPaciente: number;
   idCiclo: number;
   readOnly?: boolean;
+  paciente: Paciente;
+  cicloFecha?: string;
 }
 
-export default function OdontogramaTab({ idPaciente, idCiclo, readOnly = false }: OdontogramaTabProps) {
+export default function OdontogramaTab({ idPaciente, idCiclo, readOnly = false, paciente, cicloFecha }: OdontogramaTabProps) {
+  const { usuario } = useAuth();
+  const [exportando, setExportando] = useState(false);
+
   // ── Estado del tab (para el botón Guardar y hayHallazgos) ─────────────────
   const [dientes, setDientes] = useState<DienteEstado[]>([]);
   const [idOdontograma, setIdOdontograma] = useState<number | null>(null);
@@ -216,6 +229,50 @@ export default function OdontogramaTab({ idPaciente, idCiclo, readOnly = false }
     }
   };
 
+  const handleExportarFicha = async () => {
+    setExportando(true);
+    try {
+      const idDoctor = usuario?.idDoctor;
+
+      const [presupuestos, evoluciones, tarifas, anamnesisData, doctor] = await Promise.all([
+        presupuestoService.getPorPaciente(idPaciente).catch(() => []),
+        evolucionService.getEvolucionesPorPaciente(idPaciente).catch(() => []),
+        tarifarioService.getActivos().catch(() => []),
+        getAnamnesisPorCiclo(idCiclo).catch(() => null),
+        idDoctor
+          ? doctorService.getDoctorById(idDoctor).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+
+      let anamnesis = null;
+      if (anamnesisData?.respuestasJson) {
+        try {
+          const parsed = JSON.parse(anamnesisData.respuestasJson);
+          anamnesis = {
+            motivoConsulta:      parsed.motivoConsulta || '',
+            riesgosDetectados:   parsed.riesgosDetectados || '',
+            resumenCuestionario: parsed.resumenCuestionario || '',
+          };
+        } catch { /* ignorar JSON malformado */ }
+      }
+
+      await exportarFichaPdf({
+        paciente,
+        cicloFecha: cicloFecha ?? 'Sin fecha',
+        presupuestos,
+        evoluciones,
+        tarifas,
+        doctor,
+        anamnesis,
+      });
+    } catch (err) {
+      console.error('Error al exportar ficha:', err);
+      showToast('Error al generar la ficha PDF. Intenta de nuevo.', false);
+    } finally {
+      setExportando(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
@@ -266,35 +323,53 @@ export default function OdontogramaTab({ idPaciente, idCiclo, readOnly = false }
           <p className="text-xs text-slate-400">
             Los cambios no se envían al servidor hasta que presione &quot;Guardar Odontograma&quot;.
           </p>
-          <button
-            onClick={handleGuardarOdontograma}
-            disabled={guardando || !hayHallazgos}
-            className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-sm hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          >
-            {guardando ? (
-              <>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={handleExportarFicha}
+              disabled={exportando || cargandoInicial}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-semibold hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Exportar ficha clínica completa en PDF"
+            >
+              {exportando ? (
                 <Spinner />
-                Guardando...
-              </>
-            ) : (
-              <>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-4 h-4 shrink-0"
-                >
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
+              ) : (
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Guardar Odontograma
-              </>
-            )}
-          </button>
+              )}
+              {exportando ? 'Generando ficha...' : 'Exportar Ficha PDF'}
+            </button>
+            <button
+              onClick={handleGuardarOdontograma}
+              disabled={guardando || !hayHallazgos}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-sm hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              {guardando ? (
+                <>
+                  <Spinner />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4 shrink-0"
+                  >
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                  Guardar Odontograma
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>

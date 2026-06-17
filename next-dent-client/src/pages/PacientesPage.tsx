@@ -8,6 +8,13 @@ import {
 } from '../services/pacienteService';
 import type { Paciente } from '../types/paciente';
 import KpiBar from '../components/KpiBar';
+import { CampoConError } from '../components/CampoConError';
+import {
+  type ErroresFormulario,
+  validarTelefono,
+  validarFechaNoFutura,
+  hayErrores,
+} from '../utils/validaciones';
 
 type FormData = Omit<Paciente, 'idPac'>;
 
@@ -111,6 +118,7 @@ export default function PacientesPage() {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [errores, setErrores] = useState<ErroresFormulario<FormData>>({});
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchPacientes = () =>
@@ -137,18 +145,38 @@ export default function PacientesPage() {
     paginaActual * itemsPorPagina,
   );
 
-  const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setFormError(null); setModalOpen(true); };
+  const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setFormError(null); setErrores({}); setModalOpen(true); };
   const openEdit = (p: Paciente) => {
     setEditing(p);
     setForm({ nombre: p.nombre, apellido: p.apellido, dni: p.dni, telefono: p.telefono, fechaNacimiento: p.fechaNacimiento, correo: p.correo || '', sexo: p.sexo || '', direccion: p.direccion || '' });
-    setFormError(null); setModalOpen(true);
+    setFormError(null); setErrores({}); setModalOpen(true);
   };
-  const closeModal = () => { setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null); };
+  const closeModal = () => { setModalOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(null); setErrores({}); };
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
+  function validarFormulario(): boolean {
+    const e: ErroresFormulario<FormData> = {
+      nombre: !form.nombre.trim()
+        ? 'Nombre es obligatorio.'
+        : form.nombre.trim().length < 2 ? 'Nombre debe tener al menos 2 caracteres.' : undefined,
+      apellido: !form.apellido.trim()
+        ? 'Apellido es obligatorio.'
+        : form.apellido.trim().length < 2 ? 'Apellido debe tener al menos 2 caracteres.' : undefined,
+      telefono: validarTelefono(form.telefono),
+      fechaNacimiento: validarFechaNoFutura(form.fechaNacimiento),
+      dni: form.dni.length > 8 ? 'El DNI no puede tener más de 8 dígitos.' : 
+     !form.dni.trim() ? 'El DNI es obligatorio.' : undefined,
+      
+    };
+    setErrores(e);
+    return !hayErrores(e);
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true); setFormError(null);
+    e.preventDefault();
+    if (!validarFormulario()) return;
+    setSaving(true); setFormError(null);
     try {
       if (editing) {
         const updated = await updatePaciente(editing.idPac!, form);
@@ -426,22 +454,29 @@ export default function PacientesPage() {
                   { name: 'apellido', label: 'Apellido', type: 'text', required: true },
                   { name: 'dni', label: 'DNI', type: 'text', required: true },
                   { name: 'fechaNacimiento', label: 'Fecha de nacimiento', type: 'date', required: true },
-                  { name: 'telefono', label: 'Teléfono', type: 'text', required: true },
+                  { name: 'telefono', label: 'Teléfono', type: 'text', required: false },
                   { name: 'correo', label: 'Correo electrónico', type: 'email', placeholder: 'opcional' },
-                ].map(({ name, label, type, required, placeholder }) => (
-                  <div key={name} className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-slate-600">{label}</label>
-                    <input
-                      name={name}
-                      type={type}
-                      value={(form as Record<string, string>)[name]}
-                      onChange={handleChange}
-                      required={required}
-                      placeholder={placeholder}
-                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 outline-none transition placeholder-slate-300"
-                    />
-                  </div>
-                ))}
+                ].map(({ name, label, type, required, placeholder }) => {
+                  const err = errores[name as keyof FormData];
+                  return (
+                    <CampoConError key={name} error={err}>
+                      <label className="text-xs font-medium text-slate-600">{label}</label>
+                      <input
+                        name={name}
+                        type={type}
+                        value={(form as Record<string, string>)[name]}
+                        onChange={handleChange}
+                        required={required}
+                        placeholder={placeholder}
+                        className={`border rounded-xl px-3 py-2 text-sm text-slate-900 focus:ring-2 outline-none transition placeholder-slate-300 ${
+                          err
+                            ? 'border-red-400 focus:ring-red-400/40 focus:border-red-400'
+                            : 'border-slate-200 focus:ring-indigo-500/40 focus:border-indigo-400'
+                        }`}
+                      />
+                    </CampoConError>
+                  );
+                })}
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-slate-600">Sexo</label>

@@ -1,7 +1,5 @@
-import axios from 'axios';
 import type { DienteEstado, OdontogramaMultipieza } from '../types/odontograma';
-
-const api = axios.create({ baseURL: 'http://127.0.0.1:8080/api' });
+import axiosInstance from '../config/axiosInstance';
 
 export interface OdontogramaData {
   idOdontograma: number;
@@ -18,7 +16,7 @@ export const getPorCiclo = (
   idCiclo: number,
   tipo?: 'INICIAL' | 'ACTUAL',
 ): Promise<OdontogramaData | null> =>
-  api
+  axiosInstance
     .get<OdontogramaData>(`/odontograma/ciclo/${idCiclo}`, {
       params: tipo ? { tipo } : undefined,
     })
@@ -29,7 +27,7 @@ export const getPorPaciente = (
   idPaciente: number,
   tipo?: 'INICIAL' | 'ACTUAL',
 ): Promise<OdontogramaData | null> =>
-  api
+  axiosInstance
     .get<OdontogramaData>(`/odontograma/paciente/${idPaciente}`, {
       params: tipo ? { tipo } : undefined,
     })
@@ -37,7 +35,7 @@ export const getPorPaciente = (
     .catch(() => null);
 
 export const guardarDiente = (diente: DienteEstado): Promise<DienteEstado> =>
-  api.post<DienteEstado>('/odontograma/diente', diente).then((res) => res.data);
+  axiosInstance.post<DienteEstado>('/odontograma/diente', diente).then((res) => res.data);
 
 /**
  * Upsert integral: crea el odontograma si no existe y guarda/actualiza los dientes.
@@ -51,7 +49,7 @@ export const guardarCompleto = (
   observaciones?: string,
   idCiclo?: number,
 ): Promise<OdontogramaData> =>
-  api
+  axiosInstance
     .post<OdontogramaData>(
       `/odontograma/paciente/${idPaciente}/guardar`,
       { dientes, observaciones },
@@ -64,14 +62,14 @@ export const guardarEstados = (
   dientes: DienteEstado[],
 ): Promise<void> =>
   Promise.all(
-    dientes.map((d) => api.post('/odontograma/diente', { ...d, idOdontograma })),
+    dientes.map((d) => axiosInstance.post('/odontograma/diente', { ...d, idOdontograma })),
   ).then(() => undefined);
 
 export const getTratamientosMulti = async (
   idOdontograma: number,
 ): Promise<OdontogramaMultipieza[]> => {
   try {
-    const response = await api.get<OdontogramaMultipieza[]>(
+    const response = await axiosInstance.get<OdontogramaMultipieza[]>(
       `/odontogramas/multipieza/${idOdontograma}`,
     );
     return response.data;
@@ -86,7 +84,7 @@ export const guardarTratamientosMulti = async (
   tratamientos: OdontogramaMultipieza[],
 ): Promise<OdontogramaMultipieza[]> => {
   try {
-    const response = await api.post<OdontogramaMultipieza[]>(
+    const response = await axiosInstance.post<OdontogramaMultipieza[]>(
       `/odontogramas/multipieza/${idOdontograma}`,
       tratamientos,
     );
@@ -95,5 +93,5 @@ export const guardarTratamientosMulti = async (
     console.error('Error al guardar tratamientos multi-pieza:', error);
     throw error;
   }
-  
+
 };

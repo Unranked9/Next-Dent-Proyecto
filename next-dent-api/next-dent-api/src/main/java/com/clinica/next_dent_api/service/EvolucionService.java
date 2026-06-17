@@ -56,7 +56,8 @@ public class EvolucionService {
                 evolucion.getFecha(),
                 evolucion.getDescripcion(),
                 nombreDoctor,
-                evolucion.getNumeroFdi()
+                evolucion.getNumeroFdi(),
+                evolucion.getIdTarifa()
         );
     }
 }

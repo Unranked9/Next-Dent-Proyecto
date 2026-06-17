@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/tarifario")
-@CrossOrigin(origins = "*") // Agregamos esto para evitar futuros bloqueos de red
 public class TarifarioController {
 
     @Autowired

@@ -11,7 +11,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ciclos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class CicloClinicoController {
 
     private final CicloClinicoService cicloClinicoService;
@@ -19,7 +18,7 @@ public class CicloClinicoController {
     @PostMapping("/paciente/{idPaciente}/nuevo")
     public ResponseEntity<CicloClinico> iniciarNuevoCiclo(
             @PathVariable Integer idPaciente,
-            @RequestParam(defaultValue = "true") boolean importarAnterior) {
+            @RequestParam(defaultValue = "false") boolean importarAnterior) {
 
         return ResponseEntity.ok(cicloClinicoService.iniciarNuevoCiclo(idPaciente, importarAnterior));
     }

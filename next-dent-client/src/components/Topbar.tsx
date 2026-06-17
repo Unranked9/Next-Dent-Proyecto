@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDoctorActivo, getIniciales, getNombreCompleto } from '../hooks/useDoctorActivo';
 import { useNotificaciones } from '../hooks/useNotificaciones';
 import type { Notificacion } from '../hooks/useNotificaciones';
+import { useAuth } from '../context/AuthContext';
 
 // ── Íconos ────────────────────────────────────────────────────────────────────
 const IconBell = () => (
@@ -175,12 +176,14 @@ function DropdownPerfil({
   especialidad,
   cmp,
   onVerPerfil,
+  onLogout,
 }: {
   iniciales: string;
   nombreCompleto: string;
   especialidad: string;
   cmp: string;
   onVerPerfil: () => void;
+  onLogout: () => void;
 }) {
   return (
     <div className="absolute right-0 top-full mt-2 w-60 bg-white border border-slate-200 rounded-2xl shadow-lg z-50 overflow-hidden">
@@ -206,15 +209,12 @@ function DropdownPerfil({
           Ver perfil
         </button>
 
-        {/* Cerrar sesión deshabilitado hasta Fase 3 */}
         <button
-          disabled
-          title="Disponible cuando se implemente autenticación (Fase 3)"
-          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 cursor-not-allowed text-left"
+          onClick={onLogout}
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-red-600 transition-colors text-left"
         >
-          <span className="text-slate-300"><IconLogout /></span>
+          <span className="text-slate-400"><IconLogout /></span>
           Cerrar sesión
-          <span className="ml-auto text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full">Pronto</span>
         </button>
       </div>
     </div>
@@ -224,10 +224,12 @@ function DropdownPerfil({
 // ── Componente principal Topbar ───────────────────────────────────────────────
 interface TopbarProps {
   titulo?: string;
+  onMenuToggle: () => void;
 }
 
-export default function Topbar({ titulo = '' }: TopbarProps) {
+export default function Topbar({ titulo = '', onMenuToggle }: TopbarProps) {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   // Estado real desde BD
   const { doctor, loading: loadingDoctor } = useDoctorActivo();
@@ -258,10 +260,23 @@ export default function Topbar({ titulo = '' }: TopbarProps) {
 
   return (
     <header className="bg-white border-b border-slate-200 px-6 h-14 flex items-center justify-between sticky top-0 z-30">
-      {/* Título de la página actual */}
-      <h1 className="text-base font-semibold text-slate-900">
-        {titulo || '\u00A0'}
-      </h1>
+      <div className="flex items-center">
+        {/* Botón hamburguesa — solo mobile */}
+        <button
+          onClick={onMenuToggle}
+          className="lg:hidden mr-3 p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
+          aria-label="Abrir menú"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        {/* Título de la página actual */}
+        <h1 className="text-base font-semibold text-slate-900">
+          {titulo || ' '}
+        </h1>
+      </div>
 
       <div className="flex items-center gap-1">
 
@@ -330,6 +345,7 @@ export default function Topbar({ titulo = '' }: TopbarProps) {
               especialidad={doctor.especialidad}
               cmp={doctor.cmp}
               onVerPerfil={() => { navigate('/doctores'); setPerfilOpen(false); }}
+              onLogout={() => { setPerfilOpen(false); logout(); }}
             />
           )}
         </div>

@@ -12,4 +12,5 @@ export interface Evolucion {
   descripcion: string;
   nombreDoctor?: string;
   numeroFdi?: number;
+  idTarifa?: number;
 }
