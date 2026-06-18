@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Odontograma from './Odontograma';
 import * as presupuestoService from '../services/presupuestoService';
 import * as evolucionService from '../services/evolucionService';
@@ -332,7 +332,7 @@ function IconoDiente({ fdi }: { fdi: number }) {
   const color = info.arcada === 'superior' ? '#6366F1' : '#8B5CF6'; // indigo / violet
 
   // Formas SVG simplificadas por tipo de diente
-  const shapes: Record<TipoDiente['tipo'], JSX.Element> = {
+  const shapes: Record<TipoDiente['tipo'], React.ReactElement> = {
     incisivo: (
       // Diente rectangular con raíz simple — forma de pala
       <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
