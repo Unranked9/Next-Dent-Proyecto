@@ -137,15 +137,15 @@ export default function DashboardPage() {
   const cobrosVisibles = porCobrar.slice(0, 4);
 
   return (
-    <div className="bg-slate-100 min-h-screen p-6">
+    <div className="bg-slate-100 min-h-screen p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-5">
 
         {/* ── Header bienvenida ─────────────────────────────────────────── */}
         <div>
-          <h1 className="text-xl font-bold text-slate-800">
+          <h1 className="text-lg sm:text-2xl font-bold text-slate-900">
             {getSaludo()}, {nombreSaludo}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5 capitalize">{getFechaLarga()}</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 capitalize">{getFechaLarga()}</p>
         </div>
 
         {/* ── KPIs ──────────────────────────────────────────────────────── */}
@@ -262,7 +262,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Accesos rápidos ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {ACCESOS.map(({ icon, label, to, color, bg }) => (
             <button
               key={label}

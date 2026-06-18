@@ -121,6 +121,7 @@ export default function CitasPage() {
   const [vistaCalendario, setVistaCalendario] = useState(false);
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [filtroDoctorId, setFiltroDoctorId] = useState<number | 'todos'>('todos');
+  const [diaActivoMobile, setDiaActivoMobile] = useState(() => new Date().toISOString().split('T')[0]);
 
   const diasSemana = useMemo(() => getDiasDeSemana(semanaOffset), [semanaOffset]);
   const rangoSemana = useMemo(() => formatRangoSemana(diasSemana), [diasSemana]);
@@ -282,7 +283,7 @@ export default function CitasPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-800">Citas</h1>
-            <p className="text-sm font-medium text-slate-500 mt-0.5">
+            <p className="hidden sm:block text-sm font-medium text-slate-500 mt-0.5">
               Gestión de agenda y citas clínicas
             </p>
           </div>
@@ -378,6 +379,8 @@ export default function CitasPage() {
             onCitaClick={openEdit}
             doctores={doctores}
             filtroDoctorId={filtroDoctorId}
+            diaActivoMobile={diaActivoMobile}
+            onDiaCambia={setDiaActivoMobile}
           />
         )}
 
@@ -422,7 +425,7 @@ export default function CitasPage() {
           </div>
         </div>
 
-        {/* ── Tabla ───────────────────────────────────────────────────────── */}
+        {/* ── Tabla / Cards ───────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           {citasFiltradas.length === 0 ? (
             <div className="py-20 flex flex-col items-center gap-2">
@@ -434,73 +437,117 @@ export default function CitasPage() {
               <p className="text-slate-400 text-xs">Intenta con otros filtros o crea una nueva cita.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">#</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Paciente</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Doctor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Fecha y hora</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Motivo</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Estado</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {citasFiltradas.map((c, i) => {
-                    const doc = doctores.find((d) => d.idDoc === c.idDoc);
-                    return (
-                      <tr
-                        key={c.idCita}
-                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors group"
+            <>
+              {/* Tabla — desktop */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">#</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Paciente</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Doctor</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Fecha y hora</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Motivo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Estado</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {citasFiltradas.map((c, i) => {
+                      const doc = doctores.find((d) => d.idDoc === c.idDoc);
+                      return (
+                        <tr
+                          key={c.idCita}
+                          className="border-b border-slate-50 hover:bg-slate-50 transition-colors group"
+                        >
+                          <td className="px-6 py-4 text-sm text-slate-400 font-mono">{i + 1}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                            {getNombrePaciente(c)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-600">
+                            {doc
+                              ? `Dr. ${doc.nombre} ${doc.apellido}`
+                              : c.idDoc ? `Doctor #${c.idDoc}` : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                            {displayFecha(c.fecha, c.hora)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-600 max-w-[160px] truncate">
+                            {c.motivo || '—'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ESTADO_BADGE[c.estado] ?? 'bg-slate-100 text-slate-600'}`}>
+                              {c.estado}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => openEdit(c)}
+                                className="flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                              >
+                                <IconPencil />
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => c.idCita !== undefined && handleDelete(c.idCita)}
+                                disabled={deletingId === c.idCita}
+                                className="flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {deletingId === c.idCita
+                                  ? <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                  : <IconXSm />}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Cards — móvil */}
+              <div className="sm:hidden space-y-2 px-4 py-3">
+                {citasFiltradas.map((cita) => (
+                  <div key={cita.idCita} className="bg-white rounded-xl border border-slate-200 p-4">
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                          {getNombrePaciente(cita)}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {displayFecha(cita.fecha, cita.hora)}
+                        </p>
+                      </div>
+                      <span className={`flex-shrink-0 text-xs px-2 py-1 rounded-full font-medium ${ESTADO_BADGE[cita.estado] ?? ''}`}>
+                        {cita.estado}
+                      </span>
+                    </div>
+                    {cita.motivo && (
+                      <p className="text-xs text-slate-400 mb-3 truncate">{cita.motivo}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openEdit(cita)}
+                        className="flex-1 text-xs py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
                       >
-                        <td className="px-6 py-4 text-sm text-slate-400 font-mono">{i + 1}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                          {getNombrePaciente(c)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
-                          {doc
-                            ? `Dr. ${doc.nombre} ${doc.apellido}`
-                            : c.idDoc ? `Doctor #${c.idDoc}` : '—'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
-                          {displayFecha(c.fecha, c.hora)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-600 max-w-[160px] truncate">
-                          {c.motivo || '—'}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ESTADO_BADGE[c.estado] ?? 'bg-slate-100 text-slate-600'}`}>
-                            {c.estado}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openEdit(c)}
-                              className="flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
-                            >
-                              <IconPencil />
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => c.idCita !== undefined && handleDelete(c.idCita)}
-                              disabled={deletingId === c.idCita}
-                              className="flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              {deletingId === c.idCita
-                                ? <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                                : <IconXSm />}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => cita.idCita !== undefined && handleDelete(cita.idCita)}
+                        disabled={deletingId === cita.idCita}
+                        className="flex-1 text-xs py-1.5 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {deletingId === cita.idCita
+                          ? <span className="flex justify-center"><div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /></span>
+                          : 'Eliminar'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
@@ -511,13 +558,24 @@ export default function CitasPage() {
         </>)}
       </div>
 
+      {/* ── FAB — solo móvil ─────────────────────────────────────────────── */}
+      <button
+        onClick={openCreate}
+        className="fixed bottom-6 right-6 sm:hidden z-20 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+        aria-label="Nueva cita"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
+
       {/* ── Modal ────────────────────────────────────────────────────────── */}
       {modalOpen && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 w-full sm:max-w-lg shadow-xl mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
 
             {/* Header modal */}
             <div className="flex items-center justify-between mb-5">

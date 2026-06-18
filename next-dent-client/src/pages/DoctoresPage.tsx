@@ -179,7 +179,7 @@ export default function DoctoresPage() {
   }
 
   return (
-    <div className="bg-slate-100 min-h-screen p-6">
+    <div className="bg-slate-100 min-h-screen p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-5">
 
         {/* ── Cabecera ────────────────────────────────────────────────────── */}
@@ -292,7 +292,7 @@ export default function DoctoresPage() {
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl mx-4">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 w-full sm:max-w-lg shadow-xl mx-4 sm:mx-auto">
 
             {/* Header modal */}
             <div className="flex items-center justify-between mb-5">

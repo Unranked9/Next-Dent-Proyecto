@@ -226,29 +226,8 @@ export default function PacientesPage() {
   const totalFem = pacientes.filter((p) => p.sexo === 'F').length;
 
   return (
-    <div className="min-h-screen bg-slate-100">
-
-      {/* ── Topbar ─────────────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-slate-200 px-6 h-14 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-base font-semibold text-slate-900">Pacientes</h1>
-        <div className="flex items-center gap-3">
-          <button className="relative p-1.5 text-slate-400 hover:text-slate-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
-          </button>
-          <div className="h-5 w-px bg-slate-200" />
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-semibold text-indigo-700">
-              DR
-            </div>
-            <span className="text-sm text-slate-600 font-medium">Dr. Ramírez</span>
-          </div>
-        </div>
-      </header>
-
-      <div className="p-6 max-w-7xl mx-auto space-y-5">
+    <div className="min-h-screen bg-slate-100 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-5">
 
         {/* ── KPIs ──────────────────────────────────────────────────────────── */}
         <KpiBar />
@@ -289,7 +268,7 @@ export default function PacientesPage() {
           {/* Nuevo paciente */}
           <button
             onClick={openCreate}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm whitespace-nowrap"
+            className="hidden sm:flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm whitespace-nowrap"
           >
             <IconPlus />
             Nuevo paciente
@@ -416,15 +395,26 @@ export default function PacientesPage() {
         )}
       </div>
 
+      {/* ── FAB: solo móvil ──────────────────────────────────────────────── */}
+      <button
+        onClick={openCreate}
+        className="fixed bottom-6 right-6 sm:hidden z-20 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center"
+        aria-label="Nuevo paciente"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
+
       {/* ── Modal de formulario ───────────────────────────────────────────── */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-2xl mx-4 overflow-hidden">
             {/* Header del modal */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
                   <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -441,7 +431,7 @@ export default function PacientesPage() {
             </div>
 
             {/* Formulario */}
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 sm:py-5 space-y-4">
               {formError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-xl">
                   {formError}

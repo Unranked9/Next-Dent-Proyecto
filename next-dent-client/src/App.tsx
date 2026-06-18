@@ -15,6 +15,7 @@ import TratamientosPage from './pages/TratamientosPage';
 import PagosPage from './pages/PagosPage';
 import ConfiguracionPreciosPage from './pages/ConfiguracionPreciosPage';
 import ReportePage from './pages/ReportePage';
+import UsuariosPage from './pages/UsuariosPage';
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,6 +36,7 @@ function AppLayout() {
             <Route path="/pagos" element={<ErrorBoundary><PagosPage /></ErrorBoundary>} />
             <Route path="/tarifario" element={<ErrorBoundary><ConfiguracionPreciosPage /></ErrorBoundary>} />
             <Route path="/reporte" element={<ErrorBoundary><ReportePage /></ErrorBoundary>} />
+            <Route path="/usuarios" element={<ErrorBoundary><UsuariosPage /></ErrorBoundary>} />
           </Routes>
         </main>
       </div>

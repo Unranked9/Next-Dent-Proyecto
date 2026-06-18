@@ -52,16 +52,16 @@ export function exportarPresupuestoPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text(`${CLINICA.direccion}`, margen, y);
+  // doc.text(`${CLINICA.direccion}`, margen, y);
   doc.text(`Fecha: ${fechaHoy}`, W - margen, y, { align: 'right' });
 
-  y += 4;
-  doc.text(`Tel: ${CLINICA.telefono}  ·  ${CLINICA.email}`, margen, y);
+  // y += 4;
+  // doc.text(`Tel: ${CLINICA.telefono}  ·  ${CLINICA.email}`, margen, y);
 
-  if (CLINICA.ruc) {
-    y += 4;
-    doc.text(`RUC: ${CLINICA.ruc}`, margen, y);
-  }
+  // if (CLINICA.ruc) {
+  //   y += 4;
+  //   doc.text(`RUC: ${CLINICA.ruc}`, margen, y);
+  // }
 
   y += 6;
 
@@ -214,7 +214,6 @@ export function exportarPresupuestoPdf({
     '· Este presupuesto tiene una validez de 30 días a partir de la fecha de emisión.',
     '· Los precios indicados están en Soles (S/) e incluyen el procedimiento clínico.',
     '· El presupuesto puede variar según el diagnóstico definitivo al iniciar el tratamiento.',
-    '· Para consultas comunicarse al: ' + CLINICA.telefono,
   ];
   condiciones.forEach((line, i) => {
     doc.text(line, margen, yCondiciones + 5 + i * 4.5);

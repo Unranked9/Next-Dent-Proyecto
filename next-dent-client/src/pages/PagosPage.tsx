@@ -273,7 +273,7 @@ export default function PagosPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
+    <div className="min-h-screen bg-slate-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-5">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -286,7 +286,7 @@ export default function PagosPage() {
         {loadingPorCobrar && porCobrar.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <div className="h-3.5 w-28 bg-slate-200 rounded animate-pulse mb-4" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[0, 1].map((i) => (
                 <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />
               ))}
@@ -313,7 +313,7 @@ export default function PagosPage() {
                 </svg>
               </button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {porCobrar.map((pc) => (
                 <button
                   key={pc.paciente.idPac}
@@ -412,7 +412,7 @@ export default function PagosPage() {
 
         {/* ── Contenido principal (visible solo con paciente activo) ─────── */}
         {pacienteActivo && (
-          <div className="flex gap-5 items-start">
+          <div className="flex flex-col lg:flex-row gap-5 items-start">
 
             {/* ── Panel izquierdo: deuda + historial ─────────────────────── */}
             <div className="flex-1 min-w-0 space-y-4">
@@ -445,7 +445,9 @@ export default function PagosPage() {
                     <p className="text-xs text-slate-400">Este paciente no tiene saldos por saldar.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                    {/* Tabla — desktop */}
+                    <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50/40">
@@ -523,6 +525,66 @@ export default function PagosPage() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Cards — móvil */}
+                  <div className="sm:hidden space-y-2 p-4">
+                    {lineas.map((l) => {
+                      const val = parseFloat(l.montoInput);
+                      const excede = !isNaN(val) && val > Number(l.detalle.saldoPendiente);
+                      return (
+                        <div key={l.detalle.idDetalle} className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <p className="text-sm font-medium text-slate-900">{l.nombreTratamiento}</p>
+                              {l.detalle.numeroFdi && (
+                                <p className="text-xs text-slate-400">Pieza FDI: {l.detalle.numeroFdi}</p>
+                              )}
+                            </div>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                              l.detalle.estado === 'REALIZADO'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {l.detalle.estado === 'REALIZADO' ? 'Listo' : 'En trat.'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between mb-3 text-xs text-slate-500">
+                            <span>Precio: <span className="font-mono text-slate-700">{fmt(l.detalle.precioUnitario)}</span></span>
+                            <span>Saldo: <span className="font-mono font-semibold text-red-500">{fmt(l.detalle.saldoPendiente)}</span></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">S/</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max={l.detalle.saldoPendiente}
+                                step="0.01"
+                                value={l.montoInput}
+                                onChange={(e) => updateMonto(l.detalle.idDetalle, e.target.value)}
+                                placeholder="0.00"
+                                className={`w-full pl-8 pr-2 py-2 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition ${
+                                  excede
+                                    ? 'border-red-300 bg-red-50 text-red-700 focus:ring-red-300'
+                                    : 'border-slate-200 bg-white text-slate-900 focus:ring-indigo-300'
+                                }`}
+                              />
+                            </div>
+                            <button
+                              onClick={() => abonarTodo(l.detalle.idDetalle)}
+                              className="text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
+                            >
+                              Todo
+                            </button>
+                          </div>
+                          {excede && (
+                            <p className="text-[10px] text-red-500 mt-1">Excede el saldo pendiente</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  </>
                 )}
               </div>
 
@@ -575,7 +637,7 @@ export default function PagosPage() {
             </div>
 
             {/* ── Sidebar: resumen + acción ─────────────────────────────── */}
-            <div className="w-64 flex-shrink-0 space-y-4 sticky top-20">
+            <div className="w-full lg:w-64 flex-shrink-0 space-y-4 lg:sticky lg:top-20">
 
               {/* Resumen */}
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

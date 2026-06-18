@@ -26,6 +26,9 @@ public class Usuario {
     @Column(nullable = false, length = 30)
     private String rol;
 
+    @Column(nullable = false, columnDefinition = "boolean not null default true")
+    private boolean activo = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_doctor")
     private Doctor doctor;

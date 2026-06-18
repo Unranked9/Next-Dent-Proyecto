@@ -229,7 +229,7 @@ interface TopbarProps {
 
 export default function Topbar({ titulo = '', onMenuToggle }: TopbarProps) {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, usuario } = useAuth();
 
   // Estado real desde BD
   const { doctor, loading: loadingDoctor } = useDoctorActivo();
@@ -245,8 +245,12 @@ export default function Topbar({ titulo = '', onMenuToggle }: TopbarProps) {
   useClickOutside(bellRef, () => setBellOpen(false));
   useClickOutside(perfilRef, () => setPerfilOpen(false));
 
-  const iniciales = getIniciales(doctor);
-  const nombreCompleto = getNombreCompleto(doctor);
+  const iniciales = doctor
+    ? getIniciales(doctor)
+    : (usuario?.email?.[0]?.toUpperCase() ?? 'U');
+  const nombreCompleto = doctor
+    ? getNombreCompleto(doctor)
+    : (usuario?.email ?? 'Usuario');
 
   const handleBellClick = () => {
     setPerfilOpen(false);
@@ -338,12 +342,12 @@ export default function Topbar({ titulo = '', onMenuToggle }: TopbarProps) {
             <IconChevron open={perfilOpen} />
           </button>
 
-          {perfilOpen && doctor && (
+          {perfilOpen && (
             <DropdownPerfil
               iniciales={iniciales}
               nombreCompleto={nombreCompleto}
-              especialidad={doctor.especialidad}
-              cmp={doctor.cmp}
+              especialidad={doctor?.especialidad ?? usuario?.rol ?? ''}
+              cmp={doctor?.cmp ?? ''}
               onVerPerfil={() => { navigate('/doctores'); setPerfilOpen(false); }}
               onLogout={() => { setPerfilOpen(false); logout(); }}
             />

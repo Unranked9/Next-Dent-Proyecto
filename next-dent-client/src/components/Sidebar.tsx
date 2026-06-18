@@ -56,6 +56,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         });
     } else if (usuario?.email) {
       setNombreDoc(usuario.email);
+      setEspecialidad(usuario.rol ?? '');
+      setIniciales(usuario.email[0]?.toUpperCase() ?? 'U');
     }
   }, [usuario]);
 
@@ -130,6 +132,31 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               ))}
             </div>
           ))}
+
+          {/* Sección Administración — solo ADMIN */}
+          {usuario?.rol === 'ADMIN' && (
+            <div className="mb-1">
+              <p className="px-3 pt-3 pb-1.5 text-[9px] font-semibold text-slate-600 uppercase tracking-widest">
+                Administración
+              </p>
+              <NavLink
+                to="/usuarios"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 border-l-2 transition-all ${
+                    isActive
+                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500 font-medium'
+                      : 'text-slate-500 border-transparent hover:text-slate-300 hover:bg-white/5'
+                  }`
+                }
+              >
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                </svg>
+                Usuarios
+              </NavLink>
+            </div>
+          )}
         </nav>
 
         {/* Doctor info */}

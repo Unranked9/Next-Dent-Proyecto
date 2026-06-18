@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { getDoctores } from '../services/doctorService';
 import axiosInstance from '../config/axiosInstance';
 import { useAuth } from '../context/AuthContext';
 import type { Doctor } from '../types/doctor';
@@ -19,21 +18,15 @@ export function useDoctorActivo(): DoctorActivoState {
   });
 
   useEffect(() => {
-    setState({ doctor: null, loading: true, error: false });
-
-    if (usuario?.idDoctor != null) {
-      axiosInstance
-        .get<Doctor>(`/doctores/${usuario.idDoctor}`)
-        .then((res) => setState({ doctor: res.data, loading: false, error: false }))
-        .catch(() => setState({ doctor: null, loading: false, error: true }));
-    } else {
-      getDoctores()
-        .then((doctores) => {
-          const primero = doctores.length > 0 ? doctores[0] : null;
-          setState({ doctor: primero, loading: false, error: false });
-        })
-        .catch(() => setState({ doctor: null, loading: false, error: true }));
+    if (usuario?.idDoctor == null) {
+      setState({ doctor: null, loading: false, error: false });
+      return;
     }
+    setState({ doctor: null, loading: true, error: false });
+    axiosInstance
+      .get<Doctor>(`/doctores/${usuario.idDoctor}`)
+      .then((res) => setState({ doctor: res.data, loading: false, error: false }))
+      .catch(() => setState({ doctor: null, loading: false, error: true }));
   }, [usuario]);
 
   return state;
