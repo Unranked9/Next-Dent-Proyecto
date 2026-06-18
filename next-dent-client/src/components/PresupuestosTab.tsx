@@ -423,7 +423,7 @@ export default function PresupuestosTab({ idPaciente, idCiclo, paciente }: { idP
 
         {/* Body: Odontograma + panel lateral */}
         <div className="p-4">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] gap-5 items-start">
 
             {/* ── Odontograma (centro visual interactivo) ── */}
             <div className="relative">
