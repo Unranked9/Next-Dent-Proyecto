@@ -1,23 +1,22 @@
 import os
 import subprocess
 import datetime
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from google.cloud import storage
 from google.oauth2 import service_account
 import json
 import tempfile
 
-FOLDER_ID = os.environ['GDRIVE_FOLDER_ID']
+BUCKET_NAME = os.environ['GCS_BUCKET_NAME']
 DATABASE_URL = os.environ['DATABASE_URL']
 CREDENTIALS_JSON = os.environ['GOOGLE_CREDENTIALS_JSON']
 
-def get_drive_service():
+def get_storage_client():
     creds_dict = json.loads(CREDENTIALS_JSON)
     creds = service_account.Credentials.from_service_account_info(
         creds_dict,
-        scopes=['https://www.googleapis.com/auth/drive.file']
+        scopes=['https://www.googleapis.com/auth/cloud-platform']
     )
-    return build('drive', 'v3', credentials=creds)
+    return storage.Client(credentials=creds, project=creds_dict['project_id'])
 
 def run_backup():
     fecha = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -40,41 +39,27 @@ def run_backup():
         file_size = os.path.getsize(filepath)
         print(f'Backup generado: {file_size} bytes')
 
-        service = get_drive_service()
-        file_metadata = {
-            'name': filename,
-            'parents': [FOLDER_ID]
-        }
-        media = MediaFileUpload(filepath, mimetype='application/sql', resumable=True)
+        client = get_storage_client()
+        bucket = client.bucket(BUCKET_NAME)
+        blob = bucket.blob(filename)
 
-        print(f'Subiendo a Google Drive (folder: {FOLDER_ID})...')
-        file = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id,name,size'
-        ).execute()
+        print(f'Subiendo a Cloud Storage (bucket: {BUCKET_NAME})...')
+        blob.upload_from_filename(filepath)
+        print(f'✅ Backup subido: {filename}')
 
-        print(f'Backup subido: {file["name"]} (ID: {file["id"]})')
+        limpiar_backups_antiguos(bucket)
 
-        limpiar_backups_antiguos(service)
-
-def limpiar_backups_antiguos(service):
-    """Elimina backups con más de 30 días para no llenar el Drive"""
-    limite = datetime.datetime.now() - datetime.timedelta(days=30)
-    limite_str = limite.strftime('%Y-%m-%dT%H:%M:%S')
-
-    results = service.files().list(
-        q=f"'{FOLDER_ID}' in parents and createdTime < '{limite_str}'",
-        fields='files(id, name, createdTime)'
-    ).execute()
-
-    archivos_viejos = results.get('files', [])
-    for archivo in archivos_viejos:
-        service.files().delete(fileId=archivo['id']).execute()
-        print(f'Eliminado backup antiguo: {archivo["name"]}')
-
-    if archivos_viejos:
-        print(f'Limpieza: {len(archivos_viejos)} backup(s) eliminado(s)')
+def limpiar_backups_antiguos(bucket):
+    limite = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
+    blobs = list(bucket.list_blobs())
+    eliminados = 0
+    for blob in blobs:
+        if blob.time_created < limite:
+            blob.delete()
+            print(f'🗑 Eliminado: {blob.name}')
+            eliminados += 1
+    if eliminados:
+        print(f'Limpieza: {eliminados} backup(s) eliminado(s)')
 
 if __name__ == '__main__':
     run_backup()
