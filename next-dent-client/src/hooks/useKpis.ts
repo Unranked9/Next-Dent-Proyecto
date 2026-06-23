@@ -104,11 +104,5 @@ export function useKpis(): KpiData {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchAll]);
 
-  useEffect(() => {
-    const onPagoRegistrado = () => fetchAll();
-    window.addEventListener('pago:registrado', onPagoRegistrado);
-    return () => window.removeEventListener('pago:registrado', onPagoRegistrado);
-  }, [fetchAll]);
-
   return { ...state, refresh: fetchAll };
 }
