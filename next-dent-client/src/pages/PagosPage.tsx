@@ -222,6 +222,8 @@ export default function PagosPage() {
         detalles: detallesAbonar,
       });
 
+      window.dispatchEvent(new CustomEvent('pago:registrado'));
+
       // Recargar deuda e historial actualizados
       const [deudaActualizada, histActualizado] = await Promise.all([
         getDeudaPaciente(pacienteActivo.idPac),
